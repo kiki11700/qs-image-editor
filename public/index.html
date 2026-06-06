@@ -1,0 +1,306 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>AI 智能修图</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#0f0f23;color:#e0e0e0;min-height:100vh}
+.header{background:linear-gradient(135deg,#1a1a4e,#2d1b69);color:#fff;padding:14px 24px;display:flex;justify-content:space-between;align-items:center}
+.logo{font-size:20px;font-weight:700;background:linear-gradient(135deg,#667eea,#764ba2);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.right{display:flex;align-items:center;gap:12px;font-size:14px}
+.credits{background:rgba(102,126,234,.2);padding:4px 12px;border-radius:20px;color:#667ea0}
+.b{border:none;border-radius:8px;padding:6px 14px;cursor:pointer;font-size:13px;font-weight:600}
+.bw{background:rgba(255,255,255,.1);color:#e0e0e0;border:1px solid rgba(255,255,255,.15)}
+.bp{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff}
+.main{max-width:1100px;margin:0 auto;padding:24px 16px}
+.tools{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:20px}
+.t{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:16px 12px;text-align:center;cursor:pointer}
+.t.act{border-color:#667eea;background:rgba(102,126,234,.12)}
+.t .i{font-size:26px}
+.t .n{font-size:13px;font-weight:700}
+.up{background:rgba(255,255,255,.03);border:2px dashed rgba(255,255,255,.12);border-radius:14px;padding:40px 20px;text-align:center;cursor:pointer;margin-bottom:16px}
+.up .i{font-size:40px;color:#888}
+.up .t{font-size:15px;margin-top:8px}
+.pr{display:none;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.pr.sh{display:grid}
+.pb{background:rgba(255,255,255,.04);border-radius:12px;padding:12px}
+.pb h3{font-size:13px;color:#888;margin-bottom:8px}
+.pb .w{background:rgba(0,0,0,.2);border-radius:8px;min-height:150px;display:flex;align-items:center;justify-content:center}
+.pb .w img{max-width:100%;max-height:300px;display:none}
+.pb .w .ph{color:#666;font-size:13px}
+.pw{text-align:center;margin-bottom:20px}
+.bp2{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;padding:12px 40px;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer}
+.bd{background:#667eea;color:#fff;border:none;padding:8px 20px;border-radius:8px;cursor:pointer;font-size:13px;display:none}
+.hi{background:rgba(255,255,255,.03);border-radius:12px;padding:16px}
+.hl{max-height:300px;overflow-y:auto}
+.hi-item{display:flex;justify-content:space-between;padding:10px 14px;background:rgba(255,255,255,.04);border-radius:8px;font-size:12px;margin-bottom:6px}
+.ba{padding:2px 8px;border-radius:10px;font-size:11px}
+.bad{background:rgba(46,125,50,.15);color:#81c784}
+.bai{background:rgba(230,81,0,.15);color:#ffb74d}
+.baf{background:rgba(198,40,40,.15);color:#ef9a9a}
+.mo{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;justify-content:center;align-items:center}
+.mo.sh{display:flex}
+.mb{background:#1a1a2e;border-radius:16px;padding:32px;width:400px;max-width:90vw;border:1px solid rgba(255,255,255,.08)}
+.mb h2{font-size:22px;text-align:center;margin-bottom:6px}
+.mb .su{color:#888;text-align:center;font-size:13px;margin-bottom:20px}
+.mb .f{margin-bottom:14px}
+.mb .f label{display:block;font-size:12px;margin-bottom:4px;color:#aaa}
+.mb .f input{width:100%;padding:9px 12px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.1);border-radius:8px;font-size:14px;color:#e0e0e0;outline:none}
+.mb .bp3{width:100%;padding:11px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer}
+.mb .sw{text-align:center;margin-top:12px;font-size:13px;color:#888}
+.mb .sw a{color:#667eea;cursor:pointer;font-weight:600}
+.mb .er{color:#ef9a9a;font-size:12px;text-align:center;display:none;margin-top:6px}
+.pe{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.pg{background:rgba(255,255,255,.04);border-radius:10px;padding:12px;text-align:center;cursor:pointer;border:1px solid rgba(255,255,255,.08)}
+.pg.act{border-color:#667eea;background:rgba(102,126,234,.1)}
+.pg .cr{font-size:20px;font-weight:700;color:#667eea}
+.pg .prc{font-size:12px;color:#888;margin-top:4px}
+.toast{position:fixed;top:70px;left:50%;transform:translateX(-50%);z-index:300;padding:10px 20px;border-radius:10px;font-size:13px;display:none;max-width:90vw}
+.toast.ok{background:rgba(46,125,50,.9);color:#fff;display:block}
+.toast.er{background:rgba(198,40,40,.9);color:#fff;display:block}
+.toast.in{background:rgba(30,136,229,.9);color:#fff;display:block}
+.tt{color:#888;font-size:11px;margin-top:8px;text-align:center}
+</style>
+</head>
+<body>
+<div class="header"><div class="logo">&#10024; AI 智能修图</div><div class="right"><span class="credits" id="creditsDisplay">0 次</span><button class="b bw" onclick="showLogin()" id="loginBtn">登录</button><button class="b bw" onclick="logout()" id="logoutBtn" style="display:none">退出</button><button class="b bp" onclick="showPayment()" id="rechargeBtn" style="display:none">充值</button></div></div>
+<div id="toast" class="toast"></div>
+<div class="main">
+<div class="tools" id="tools"></div>
+<div class="up" id="upArea" onclick="document.getElementById('fileInput').click()"><div class="i">&#128193;</div><div class="t">上传图片或拖拽到此处</div></div>
+<input type="file" id="fileInput" accept="image/*" style="display:none" onchange="handleFile(this)">
+<div class="pr" id="preview"><div class="pb"><h3>原图</h3><div class="w"><img id="originalImg"><span class="ph" id="originalPh">等待上传</span></div></div><div class="pb"><h3>结果</h3><div class="w"><img id="resultImg"><span class="ph" id="resultPh">等待处理</span></div></div></div>
+<button class="bp2" id="processBtn" disabled onclick="processImage()">开始处理</button>
+<button class="bd" id="downloadBtn" onclick="downloadResult()">&#11015; 下载结果</button>
+<div class="hi"><h3>处理记录</h3><div class="hl" id="historyList"><div style="color:#666;padding:16px;text-align:center;font-size:13px">暂无记录</div></div></div>
+<div class="tt">注册即送 8 次免费额度 ｜ 兑换码：3106</div>
+</div>
+<div class="mo" id="loginModal" onclick="if(event.target===this)hideLogin()"><div class="mb"><h2 id="authTitle">登录</h2><div class="su" id="authSub">欢迎回来</div><div class="er" id="authErr"></div><div class="f" id="regFields" style="display:none"><label>邮箱</label><input type="email" id="emailInput" placeholder="请输入邮箱"></div><div class="f"><label>用户名</label><input type="text" id="userInput" placeholder="请输入用户名"></div><div class="f"><label>密码</label><input type="password" id="passInput" placeholder="请输入密码" onkeydown="if(event.key==='Enter')doAuth()"></div><button class="bp3" id="authBtn" onclick="doAuth()">登录</button><div class="sw"><span id="authSwitchText">还没有账号？</span><a id="authSwitchLink" onclick="toggleAuth()">注册</a></div></div></div>
+<div class="mo" id="payModal" onclick="if(event.target===this)hidePayment()"><div class="mb"><h2>&#128142; 充值</h2><div class="su">选择套餐</div><div class="pe" id="pkgList"></div><div class="rb" style="display:flex;gap:8px;margin-bottom:16px"><input type="text" id="codeInput" placeholder="输入兑换码" style="flex:1;padding:8px 12px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#e0e0e0;outline:none"><button onclick="redeemCode()" style="background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;font-weight:600">兑换</button></div><button class="bp3" onclick="doPay()">模拟支付</button><div class="sw"><a onclick="hidePayment()">关闭</a></div></div></div>
+<script>
+var TOKEN=localStorage.getItem('token');
+var SELECTED_TOOL='';
+var CURRENT_FILE=null;
+var LAST_TASK_ID=null;
+var IS_REGISTER=false;
+
+var TOOLS_DATA=[
+  {id:'upscale',icon:'&#128269;',name:'转高清',desc:'提升分辨率'},
+  {id:'upscale4k',icon:'&#10024;',name:'转4K',desc:'超清4K',fb:'新'},
+  {id:'vectorize',icon:'&#9999;&#65039;',name:'转矢量',desc:'转为SVG'},
+  {id:'remove-bg',icon:'&#9986;',name:'抠图去底',desc:'去除背景'},
+  {id:'replace-bg',icon:'&#127912;',name:'换背景',desc:'更换颜色'},
+  {id:'style-transfer',icon:'&#127752;',name:'转风格',desc:'AI风格'},
+  {id:'similar',icon:'&#128260;',name:'出类似图',desc:'二创'}
+];
+var PACKAGES=[
+  {id:'p10',c:10,p:'9.9'},
+  {id:'p30',c:30,p:'25'},
+  {id:'p100',c:100,p:'68'},
+  {id:'p500',c:500,p:'258'}
+];
+var TYPE_NAMES={upscale:'转高清',upscale4k:'转4K',vectorize:'转矢量','remove-bg':'抠图','replace-bg':'换背景','style-transfer':'转风格',similar:'类似图'};
+
+function g(id){return document.getElementById(id)}
+
+function showLogin(){g('loginModal').classList.add('sh')}
+function hideLogin(){g('loginModal').classList.remove('sh')}
+function showPayment(){g('payModal').classList.add('sh');renderPkgs()}
+function hidePayment(){g('payModal').classList.remove('sh')}
+
+function toast(msg,t){var el=g('toast');el.textContent=msg;el.className='toast '+t;clearTimeout(el._t);el._t=setTimeout(function(){el.className='toast'},3000)}
+
+function toggleAuth(){
+  IS_REGISTER=!IS_REGISTER;
+  if(IS_REGISTER){
+    g('authTitle').textContent='注册';g('authSub').textContent='免费获得8次额度';
+    g('regFields').style.display='block';g('authBtn').textContent='注册';
+    g('authSwitchText').textContent='已有账号？';g('authSwitchLink').textContent='登录'
+  } else {
+    g('authTitle').textContent='登录';g('authSub').textContent='欢迎回来';
+    g('regFields').style.display='none';g('authBtn').textContent='登录';
+    g('authSwitchText').textContent='还没有账号？';g('authSwitchLink').textContent='注册'
+  }
+  g('authErr').style.display='none'
+}
+
+async function doAuth(){
+  var un=g('userInput').value.trim();var pw=g('passInput').value.trim();
+  var em=g('emailInput').value.trim();
+  if(!un||!pw){g('authErr').textContent='请填写完整';g('authErr').style.display='block';return}
+  if(IS_REGISTER&&!em){g('authErr').textContent='请填写邮箱';g('authErr').style.display='block';return}
+  if(IS_REGISTER&&pw.length<6){g('authErr').textContent='密码至少6个字符';g('authErr').style.display='block';return}
+  var ep=IS_REGISTER?'/api/auth/register':'/api/auth/login';
+  var body={username:un,password:pw};
+  if(IS_REGISTER)body.email=em;
+  try{
+    var r=await fetch(ep,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    var d=await r.json();
+    if(!r.ok){g('authErr').textContent=d.error;g('authErr').style.display='block';return}
+    TOKEN=d.token;localStorage.setItem('token',TOKEN);
+    hideLogin();toast(d.message||'成功','ok');await refreshCredits();
+    g('loginBtn').style.display='none';g('logoutBtn').style.display='inline';g('rechargeBtn').style.display='inline'
+  }catch(e){g('authErr').textContent='失败: '+e.message;g('authErr').style.display='block'}
+}
+
+function logout(){TOKEN=null;localStorage.removeItem('token');g('loginBtn').style.display='inline';g('logoutBtn').style.display='none';g('rechargeBtn').style.display='none';g('creditsDisplay').textContent='0 次';toast('已退出','ok')}
+
+async function refreshCredits(){
+  if(!TOKEN)return;
+  try{
+    var r=await fetch('/api/auth/me',{headers:{'Authorization':'Bearer '+TOKEN}});
+    if(!r.ok){if(r.status===401){logout();toast('登录已过期','er')}return}
+    var d=await r.json();g('creditsDisplay').textContent=d.credits+' 次'
+  }catch(e){}
+}
+
+// Init tools
+(function(){
+  var h='';
+  TOOLS_DATA.forEach(function(t){
+    h+='<div class="t" onclick="selectTool(\x27'+t.id+'\x27)" id="tool-'+t.id+'"><div class="i">'+t.icon+'</div><div class="n">'+t.name+(t.fb?' <span class="bad" style="padding:1px 4px;font-size:10px">'+t.fb+'</span>':'')+'</div></div>'
+  });
+  g('tools').innerHTML=h
+})();
+
+function selectTool(id){
+  SELECTED_TOOL=id;
+  document.querySelectorAll('.t').forEach(function(e){e.classList.remove('act')});
+  var el=g('tool-'+id);if(el)el.classList.add('act');
+  checkReady()
+}
+
+function handleFile(input){
+  if(input.files&&input.files[0]){
+    CURRENT_FILE=input.files[0];
+    var r=new FileReader();
+    r.onload=function(e){g('originalImg').src=e.target.result;g('originalImg').style.display='';g('originalPh').style.display='none';g('preview').classList.add('sh')};
+    r.readAsDataURL(CURRENT_FILE);
+    checkReady()
+  }
+}
+g('upArea').ondragover=function(e){e.preventDefault()};
+g('upArea').ondrop=function(e){e.preventDefault();if(e.dataTransfer.files[0]){CURRENT_FILE=e.dataTransfer.files[0];var r=new FileReader();r.onload=function(e){g('originalImg').src=e.target.result;g('originalImg').style.display='';g('originalPh').style.display='none';g('preview').classList.add('sh')};r.readAsDataURL(CURRENT_FILE);checkReady()}};
+
+function checkReady(){g('processBtn').disabled=!(SELECTED_TOOL&&CURRENT_FILE)}
+
+function clearFile(){CURRENT_FILE=null;g('fileInput').value='';g('originalImg').src='';g('originalImg').style.display='none';g('originalPh').style.display='';g('resultImg').src='';g('resultImg').style.display='none';g('resultPh').style.display='';g('downloadBtn').style.display='none';g('processBtn').disabled=true}
+
+async function processImage(){
+  if(!SELECTED_TOOL){toast('请选功能','er');return}
+  if(!CURRENT_FILE){toast('请上传图片','er');return}
+  if(!TOKEN){toast('请先登录','er');return}
+  g('processBtn').disabled=true;g('processBtn').textContent='处理中...';
+  var fd=new FormData();fd.append('image',CURRENT_FILE);fd.append('type',SELECTED_TOOL);
+  g('resultImg').style.display='none';g('resultPh').style.display='';g('resultPh').textContent='处理中...';
+  g('downloadBtn').style.display='none';
+  try{
+    var r=await fetch('/api/image/process',{method:'POST',headers:{'Authorization':'Bearer '+TOKEN},body:fd});
+    var d=await r.json();
+    if(!r.ok){g('processBtn').disabled=false;g('processBtn').textContent='开始处理';
+      if(r.status===401){logout();toast('登录已过期','er');return}
+      toast(d.error||'失败','er');g('resultPh').textContent='失败';return
+    }
+    toast('任务已提交','in');pollTask(d.taskId)
+  }catch(e){g('processBtn').disabled=false;g('processBtn').textContent='开始处理';toast('请求失败','er');g('resultPh').textContent='请求失败'}
+}
+
+function pollTask(tid){
+  var n=0;
+  function fn(){
+    fetch('/api/image/task/'+tid,{headers:{'Authorization':'Bearer '+TOKEN}}).then(function(r){
+      if(!r.ok){if(r.status===401){logout()}return}
+      r.json().then(function(d){
+        if(d.status==='completed'){
+          LAST_TASK_ID=tid;
+          g('resultImg').src='/api/image/preview/'+tid+'?token='+encodeURIComponent(TOKEN)+'&t='+Date.now();
+          g('resultImg').style.display='';g('resultPh').style.display='none';
+          g('downloadBtn').style.display='inline-block';
+          g('processBtn').disabled=false;g('processBtn').textContent='开始处理';
+          toast('完成！','ok');loadHistory();refreshCredits();return
+        }
+        if(d.status==='failed'){
+          g('processBtn').disabled=false;g('processBtn').textContent='开始处理';
+          g('resultPh').textContent='处理失败';
+          toast('处理失败，额度已退还','er');loadHistory();refreshCredits();return
+        }
+        g('resultPh').textContent='处理中... ('+(n+1)+'s)';
+        n++;if(n<90)setTimeout(fn,2000);
+        else{g('processBtn').disabled=false;g('processBtn').textContent='开始处理';g('resultPh').textContent='超时';toast('超时','er')}
+      })
+    }).catch(function(){n++;if(n<90)setTimeout(fn,2000)})
+  }
+  setTimeout(fn,1500)
+}
+
+function downloadResult(){
+  if(!LAST_TASK_ID){toast('无结果','er');return}
+  toast('正在下载...','in');
+  var a=document.createElement('a');
+  a.href='/api/image/download/'+LAST_TASK_ID+'?token='+encodeURIComponent(TOKEN);
+  a.download='';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function(){document.body.removeChild(a)},1000)
+}
+
+async function loadHistory(){
+  if(!TOKEN)return;
+  try{
+    var r=await fetch('/api/image/tasks',{headers:{'Authorization':'Bearer '+TOKEN}});
+    if(!r.ok)return;
+    var ts=await r.json();
+    var el=g('historyList');
+    if(!ts||ts.length===0){el.innerHTML='<div style="color:#666;padding:16px;text-align:center;font-size:13px">暂无记录</div>';return}
+    var h='';
+    ts.forEach(function(t){
+      var lb=TYPE_NAMES[t.type]||t.type;
+      var st=t.status==='completed'?'已完成':t.status==='processing'?'处理中':'失败';
+      var sc=t.status==='completed'?'bad':t.status==='processing'?'bai':'baf';
+      h+='<div class="hi-item"><div>'+lb+' <span style="color:#666">'+new Date(t.createdAt).toLocaleString()+'</span></div><div><span class="ba '+sc+'">'+st+'</span></div></div>'
+    });
+    el.innerHTML=h
+  }catch(e){}
+}
+
+function renderPkgs(){
+  var h='';
+  PACKAGES.forEach(function(p){
+    h+='<div class="pg" id="pkg-'+p.id+'" onclick="selectPkg(\x27'+p.id+'\x27)"><div class="cr">'+p.c+' 次</div><div class="prc">&#165;'+p.p+'</div></div>'
+  });
+  g('pkgList').innerHTML=h
+}
+var SELECTED_PKG='p10';
+function selectPkg(id){SELECTED_PKG=id;document.querySelectorAll('.pg').forEach(function(e){e.classList.remove('act')});g('pkg-'+id).classList.add('act')}
+
+async function doPay(){
+  if(!TOKEN){toast('请先登录','er');return}
+  try{
+    var r=await fetch('/api/payment/create-order',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+TOKEN},body:JSON.stringify({packageId:SELECTED_PKG,channel:'mock'})});
+    var d=await r.json();
+    if(!r.ok){toast(d.error,'er');return}
+    await fetch('/api/payment/notify',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'orderId='+d.orderId+'&tradeNo=mock_'+Date.now()});
+    toast('充值成功！获得 '+d.credits+' 次','ok');hidePayment();refreshCredits()
+  }catch(e){toast('充值失败','er')}
+}
+
+async function redeemCode(){
+  var c=g('codeInput').value.trim();
+  if(!c){toast('请输入兑换码','er');return}
+  if(!TOKEN){toast('请先登录','er');return}
+  try{
+    var r=await fetch('/api/payment/redeem',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+TOKEN},body:JSON.stringify({code:c})});
+    var d=await r.json();
+    if(!r.ok){toast(d.error,'er');return}
+    toast(d.message,'ok');g('codeInput').value='';refreshCredits()
+  }catch(e){toast('兑换失败','er')}
+}
+
+if(TOKEN){g('loginBtn').style.display='none';g('logoutBtn').style.display='inline';g('rechargeBtn').style.display='inline';refreshCredits();loadHistory()}
+document.onkeydown=function(e){if(e.key==='Escape'){hideLogin();hidePayment()}}
+</script>
+</body>
+</html>
+

@@ -1,0 +1,13 @@
+﻿[build]
+  builder = "nixpacks"
+  buildCommand = "npm install && npm run build"
+
+[deploy]
+  startCommand = "node server.js"
+
+# Environment variables to set on Railway:
+# NODE_ENV=production
+# JWT_SECRET=<generate-a-random-secret>
+# DATABASE_URL=from Railway PostgreSQL plugin
+# REDIS_URL=from Railway Redis plugin
+# REPLICATE_API_TOKEN=<your-replicate-token>

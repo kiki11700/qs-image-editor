@@ -10,4 +10,4 @@
 
 [volumes]
   "uploads" = "/app/uploads"
-  "data" = "/app/data.db"
+  "data" = "/app/data"

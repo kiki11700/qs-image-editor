@@ -1,8 +1,8 @@
-const initSqlJs = require("sql.js");
+﻿const initSqlJs = require("sql.js");
 const fs = require("fs");
 const pathMod = require("path");
 
-const DB_PATH = pathMod.join(__dirname, "..", "data.db");
+const DB_PATH = process.env.DATA_DIR ? pathMod.join(process.env.DATA_DIR, "data.db") : pathMod.join(__dirname, "..", "data.db");
 
 let db = null;
 
@@ -110,3 +110,4 @@ function initSchema() {
 }
 
 module.exports = { getDb, initDb, saveDb };
+

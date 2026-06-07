@@ -1,7 +1,6 @@
 ﻿[build]
   builder = "nixpacks"
-  buildCommand = "npm install && cd frontend && npm install && npm run build && cd .."
-  watchPatterns = ["src/**", "server.js", "package.json", "frontend/**"]
+  buildCommand = "npm install && npm run build"
 
 [deploy]
   startCommand = "node server.js"
@@ -10,4 +9,3 @@
 
 [volumes]
   "uploads" = "/app/uploads"
-  "data" = "/app/data"

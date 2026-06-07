@@ -1,4 +1,4 @@
-const express = require("express");
+﻿const express = require("express");
 const { v4: uuidv4 } = require("uuid");
 const { getDb, saveDb } = require("../db/database");
 const { addCredits, getUserById } = require("../services/credit");
@@ -57,7 +57,7 @@ router.post("/notify", express.urlencoded({ extended: true }), (req, res) => {
   if (!order || order.status !== "pending") return res.send("success");
   dbRun("UPDATE payment_orders SET status = ?, trade_no = ?, paid_at = CURRENT_TIMESTAMP WHERE id = ?",
     ["paid", tradeNo || orderId, orderId]);
-  addCredits(order.user_id, order.credits, "充值 " + order.credits + " 次");
+  addCredits(order.user_id, order.credits, "充值" + order.credits + " 次");
   res.send("success");
 });
 
@@ -78,10 +78,10 @@ router.post("/redeem", authMiddleware, (req, res) => {
   const record = dbGet("SELECT * FROM redemption_codes WHERE code = ?", [code]);
   if (!record) return res.status(400).json({ error: "无效的兑换码" });
   if (record.used) return res.status(400).json({ error: "兑换码已使用" });
-  addCredits(req.userId, record.credits, "兑换码 " + code + " 充值 " + record.credits + " 次");
+  addCredits(req.userId, record.credits, "兑换码" + code + " 充值" + record.credits + " 次");
   dbRun("UPDATE redemption_codes SET used = 1, used_by = ?, used_at = CURRENT_TIMESTAMP WHERE id = ?", [req.userId, record.id]);
   const user = getUserById(req.userId);
-  res.json({ credits: user.credits, message: "兑换成功！获得 " + record.credits + " 次额度" });
+  res.json({ credits: user.credits, message: "兑换成功！获得" + record.credits + " 次额度" });
 });
 
 module.exports = router;

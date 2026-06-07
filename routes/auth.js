@@ -1,4 +1,4 @@
-const express = require("express");
+﻿const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { getUserByUsername, getUserByEmail, createUser, getUserById } = require("../services/credit");
@@ -28,7 +28,7 @@ router.post("/register", async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     const userId = createUser(username, email, hashedPassword);
     const token = jwt.sign({ userId }, JWT_SECRET, { expiresIn: "7d" });
-    res.json({ token, userId, username, credits: 8, message: "注册成功！赠送 8 次免费额度" });
+    res.json({ token, userId, username, credits: 8, message: "注册成功！赠送8次免费额度" });
   } catch(e) {
     res.status(500).json({ error: "注册失败: " + e.message });
   }

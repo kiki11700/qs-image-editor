@@ -1,9 +1,9 @@
-<template>
+﻿<template>
   <div class="max-w-3xl mx-auto pt-6">
-    <h2 class="text-xl font-bold mb-6">?? ????</h2>
+    <h2 class="text-xl font-bold mb-6">历史记录</h2>
     <div v-if="tasks.length === 0" class="text-center py-16 text-gray-600">
-      <div class="text-4xl mb-3">??</div>
-      <div class="text-sm">??????</div>
+      <div class="text-4xl mb-3">📋</div>
+      <div class="text-sm">还没有处理记录</div>
     </div>
     <div v-else class="space-y-2">
       <div v-for="t in tasks" :key="t.id"
@@ -21,7 +21,7 @@
             :class="statusClass(t.status)"
           >{{ statusText(t.status) }}</span>
           <template v-if="t.status === 'completed'">
-            <el-button size="small" round @click="viewResult(t)">??</el-button>
+            <el-button size="small" round @click="viewResult(t)">查看</el-button>
           </template>
         </div>
       </div>
@@ -41,22 +41,22 @@ const store = useUserStore();
 const tasks = ref([]);
 
 const TOOLS_MAP = {
-  upscale: { icon: "??", name: "???" },
-  upscale4k: { icon: "?", name: "?4K" },
-  vectorize: { icon: "??", name: "???" },
-  "remove-bg": { icon: "??", name: "????" },
-  "replace-bg": { icon: "??", name: "???" },
-  "style-transfer": { icon: "??", name: "???" },
-  similar: { icon: "??", name: "????" },
+  upscale: { icon: "🖼️", name: "转高清" },
+  upscale4k: { icon: "📺", name: "转4K" },
+  vectorize: { icon: "📐", name: "转矢量" },
+  "remove-bg": { icon: "✂️", name: "抠图去底" },
+  "replace-bg": { icon: "🎨", name: "更换背景" },
+  "style-transfer": { icon: "✨", name: "转风格" },
+  similar: { icon: "🔀", name: "出类似图" },
 };
 
-function toolIcon(type) { return TOOLS_MAP[type]?.icon || "???"; }
+function toolIcon(type) { return TOOLS_MAP[type]?.icon || "🖼️"; }
 function toolName(type) { return TOOLS_MAP[type]?.name || type; }
 function statusClass(s) {
   return s === "completed" ? "bg-emerald-500/15 text-emerald-400" : s === "processing" ? "bg-amber-500/15 text-amber-400" : "bg-red-500/15 text-red-400";
 }
 function statusText(s) {
-  return s === "completed" ? "???" : s === "processing" ? "???" : "??";
+  return s === "completed" ? "已完成" : s === "processing" ? "处理中" : "失败";
 }
 function formatTime(t) {
   if (!t) return "";
@@ -75,7 +75,7 @@ async function loadTasks() {
     });
     tasks.value = res.data;
   } catch (e) {
-    ElMessage.error("????");
+    ElMessage.error("加载失败");
   }
 }
 onMounted(() => { loadTasks(); });

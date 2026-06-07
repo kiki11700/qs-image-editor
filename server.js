@@ -31,25 +31,26 @@ async function startServer() {
   app.use("/api/payment", paymentRouter);
   app.use("/api/workflow", workflowRouter);
 
-  // 静态文件服务：优先使用 public/（独立 SPA），降级到 Vue 前端
+  // 静态文件服务：优先使用 Vue 前端（frontend/dist/），降级到独立 SPA（public/）
   const publicPath = pathMod.join(__dirname, "public");
   const distPath = pathMod.join(__dirname, "frontend", "dist");
   const hasPublicIndex = fs.existsSync(pathMod.join(publicPath, "index.html"));
   const hasDistIndex = fs.existsSync(pathMod.join(distPath, "index.html"));
 
-  if (hasPublicIndex) {
-    console.log("  提供: public/（完整独立 SPA）");
-    app.use(express.static(publicPath));
-    app.get("*", (req, res) => {
-      if (req.path.startsWith("/api")) return;
-      res.sendFile(pathMod.join(publicPath, "index.html"));
-    });
-  } else if (hasDistIndex) {
-    console.log("  提供: frontend/dist/（Vue 前端）");
+  // 优先使用 Vue 前端构建
+  if (hasDistIndex) {
+    console.log("  提供: frontend/dist/（Vue 前端构建）");
     app.use(express.static(distPath));
     app.get("*", (req, res) => {
       if (req.path.startsWith("/api")) return;
       res.sendFile(pathMod.join(distPath, "index.html"));
+    });
+  } else if (hasPublicIndex) {
+    console.log("  提供: public/（独立 SPA 降级）");
+    app.use(express.static(publicPath));
+    app.get("*", (req, res) => {
+      if (req.path.startsWith("/api")) return;
+      res.sendFile(pathMod.join(publicPath, "index.html"));
     });
   }
 

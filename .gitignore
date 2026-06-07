@@ -7,3 +7,8 @@ uploads/*
 .env
 dist/
 .vite/
+# 开发工具目录
+.playwright-cli/
+.tools/
+scripts/
+QS美图-落地执行方案.md

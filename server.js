@@ -15,6 +15,11 @@ async function startServer() {
   await initDb();
   console.log("数据库初始化完成");
 
+  // Railway 健康检查端点
+  app.get("/health", (req, res) => {
+    res.json({ status: "ok", timestamp: new Date().toISOString() });
+  });
+
   const { router: authRouter } = require("./routes/auth");
   const imageRouter = require("./routes/image");
   const paymentRouter = require("./routes/payment");

@@ -5,6 +5,7 @@ uploads/*
 *.db
 .env
 dist/
+!frontend/dist/
 .vite/
 # 开发工具目录
 .playwright-cli/

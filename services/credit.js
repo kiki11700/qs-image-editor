@@ -49,7 +49,7 @@ function createUser(username, email, hashedPassword) {
   const row = stmt.getAsObject();
   stmt.free();
   db.run("INSERT INTO credit_logs (user_id, amount, type, remark) VALUES (?, ?, ?, ?)",
-    [row.id, trialCredits, "bonus", "新用户注册赠送?]);
+    [row.id, trialCredits, "bonus", "新用户注册赠送"]);
   saveDb();
   return row.id;
 }
@@ -77,7 +77,7 @@ function deductCredit(userId) {
   if (row.credits < 1) return false;
   db.run("UPDATE users SET credits = credits - 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [userId]);
   db.run("INSERT INTO credit_logs (user_id, amount, type, remark) VALUES (?, ?, ?, ?)",
-    [userId, -1, "deduct", "处理图片消耗?]);
+    [userId, -1, "deduct", "处理图片消耗"]);
   saveDb();
   return true;
 }
@@ -87,7 +87,7 @@ function addCredits(userId, amount, remark) {
   db.run("UPDATE users SET credits = credits + ?, total_credits = total_credits + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
     [amount, amount, userId]);
   db.run("INSERT INTO credit_logs (user_id, amount, type, remark) VALUES (?, ?, ?, ?)",
-    [userId, amount, "recharge", remark || "充值?]);
+    [userId, amount, "recharge", remark || "充值"]);
   saveDb();
 }
 

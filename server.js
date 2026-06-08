@@ -13,6 +13,11 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 const { initDb } = require("./db/database");
 
 async function startServer() {
+  // Railway 健康检查端点（提前注册）
+  app.get("/health", (req, res) => {
+    res.json({ status: "ok", timestamp: new Date().toISOString() });
+  });
+
   await initDb();
   console.log("数据库初始化完成");
 
@@ -70,4 +75,4 @@ async function startServer() {
   });
 }
 
-startServer().catch(console.error);
+startServer().catch(err => { console.error('Server startup failed:', err); process.exit(1); });

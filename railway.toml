@@ -1,6 +1,6 @@
-[build]
+﻿[build]
   builder = "nixpacks"
-  buildCommand = ""
+  buildCommand = "echo 'Using pre-built dist'"
 
 [deploy]
   startCommand = "node server.js"

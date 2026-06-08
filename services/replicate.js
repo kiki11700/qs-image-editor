@@ -20,7 +20,7 @@ function getClient() {
 
 // Model versions (pinned for stability)
 const MODELS = {
-  "remove-bg": "nateraw/rembg",
+  "remove-bg": "lucataco/remove-bg:95fcc2a26d3899cd6c2691c900465aaeff466285a65c14638cc5f36f34befaf1",
   "upscale": "nightmareai/real-esrgan:42fed1c4974146d4d2414e2be2c5277c7fcf05fcc3a73abf41606ed7d15a1184",
   "upscale4k": "nightmareai/real-esrgan:42fed1c4974146d4d2414e2be2c5277c7fcf05fcc3a73abf41606ed7d15a1184",
   "style-transfer": "timothybrooks/instruct-pix2pix:30c1d0b916a6f8efce20493f5d61ee27491ab9a60437c893c8316e6f0b6b3b3b",

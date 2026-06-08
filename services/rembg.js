@@ -24,7 +24,7 @@ function getClient() {
 async function removeBackgroundWithAI(inputPath, outputPath) {
   const client = getClient();
   if (!client) return null;
-  const output = await client.run("nateraw/rembg", {
+  const output = await client.run("lucataco/remove-bg:95fcc2a26d3899cd6c2691c900465aaeff466285a65c14638cc5f36f34befaf1", {
     input: { image: fs.createReadStream(inputPath) }
   });
   let url;
@@ -39,7 +39,7 @@ async function removeBackgroundWithAI(inputPath, outputPath) {
 async function replaceBackgroundWithAI(inputPath, bgColor, outputPath) {
   const client = getClient();
   if (!client) return null;
-  const output = await client.run("nateraw/rembg", {
+  const output = await client.run("lucataco/remove-bg:95fcc2a26d3899cd6c2691c900465aaeff466285a65c14638cc5f36f34befaf1", {
     input: { image: fs.createReadStream(inputPath) }
   });
   let url;

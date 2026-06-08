@@ -1,11 +1,12 @@
-{
+﻿{
     "name": "qs-image-editor",
     "version": "1.0.0",
     "description": "QS美图 - AI 智能修图网页工具",
     "main": "server.js",
     "scripts": {
         "start": "node server.js",
-        "build": "echo 'Using pre-built dist'"
+        "build": "cd frontend && npm install 2>/dev/null && npx vite build --logLevel silent 2>/dev/null || echo 'Using pre-built dist'",
+        "railway-build": "cd frontend && npm install && npx vite build"
     },
     "dependencies": {
         "bcryptjs": "^2.4.3",

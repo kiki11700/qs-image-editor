@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="pt-4 pb-12">
     <div class="text-center mb-8">
       <h1 class="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-[#667eea] to-[#764ba2] bg-clip-text text-transparent">

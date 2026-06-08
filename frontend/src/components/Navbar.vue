@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <header class="sticky top-0 z-50 border-b border-white/10" style="background: rgba(15,15,35,0.85); backdrop-filter: blur(16px);">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex items-center justify-between h-14 sm:h-16">
@@ -15,7 +15,7 @@
         <div class="flex items-center gap-3">
           <span v-if="store.isLoggedIn" class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 border border-white/10 text-gray-300">
             <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-            {{ store.credits }} 次
+            内测免费
           </span>
 
           <template v-if="store.isLoggedIn">

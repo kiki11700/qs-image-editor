@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="pt-4">
     <div class="flex items-center justify-between mb-4">
       <div>
@@ -38,7 +38,7 @@
             <el-input v-model="node.params.stylePrompt" placeholder="风格描述" size="small" class="!w-[150px]" />
           </template>
 
-          <span class="text-xs text-gray-600 ml-auto">消耗 1 次额度/步</span>
+          <span class="text-xs text-gray-600 ml-auto">内测免费</span>
         </div>
 
         <!-- 第一个节点：上传图片 -->

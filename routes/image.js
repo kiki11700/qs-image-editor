@@ -3,7 +3,7 @@ const multer = require("multer");
 const pathMod = require("path");
 const fs = require("fs");
 const { getDb, saveDb } = require("../db/database");
-const { deductCredit, getCredits } = require("../services/credit");
+// 内测版：取消额度限制
 const { authMiddleware } = require("./auth");
 const ai = require("../services/ai");
 const rembg = require("../services/rembg");
@@ -26,7 +26,7 @@ const upload = multer({
   fileFilter: (req, file, cb) => {
     const allowed = [".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif"];
     if (allowed.includes(pathMod.extname(file.originalname).toLowerCase())) cb(null, true);
-    else cb(new Error("不支持的图片格式"));
+    else cb(new Error("涓嶆敮鎸佺殑鍥剧墖鏍煎紡"));
   }
 });
 
@@ -36,7 +36,7 @@ const TASK_HANDLERS = {
   "vectorize":     async (i, o, p) => { o = o.replace(/\.\w+$/, ".svg"); await vectorize.vectorize(i, o); },
   "remove-bg":     async (i, o, p) => { await rembg.removeBackground(i, o); },
   "replace-bg":    async (i, o, p) => { await rembg.replaceBackground(i, p.bgColor || "#ffffff", o); },
-  "style-transfer": async (i, o, p) => { await ai.styleTransfer(i, p.stylePrompt || "动漫风格", o); },
+  "style-transfer": async (i, o, p) => { await ai.styleTransfer(i, p.stylePrompt || "鍔ㄦ极椋庢牸", o); },
   "similar":       async (i, o, p) => { await ai.generateSimilar(i, o); }
 };
 
@@ -63,15 +63,14 @@ function dbRun(sql, params) {
 }
 
 // ============================================================
-// 提交处理任务
+// 鎻愪氦澶勭悊浠诲姟
 // ============================================================
 router.post("/process", authMiddleware, upload.single("image"), async (req, res) => {
   try {
     const { type, stylePrompt, bgColor } = req.body;
-    if (!req.file) return res.status(400).json({ error: "请上传图片" });
-    if (!TASK_HANDLERS[type]) { fs.unlinkSync(req.file.path); return res.status(400).json({ error: "不支持的类型" }); }
-    if (getCredits(req.userId) < 1) { fs.unlinkSync(req.file.path); return res.status(400).json({ error: "额度不足，请充值" }); }
-    if (!deductCredit(req.userId)) { fs.unlinkSync(req.file.path); return res.status(400).json({ error: "额度不足" }); }
+    if (!req.file) return res.status(400).json({ error: "璇蜂笂浼犲浘鐗? });
+    if (!TASK_HANDLERS[type]) { fs.unlinkSync(req.file.path); return res.status(400).json({ error: "涓嶆敮鎸佺殑绫诲瀷" }); }
+    // 内测版：取消次数限制
 
     const taskId = uuidv4();
     const ext = type === "vectorize" ? ".svg" : ".png";
@@ -80,7 +79,7 @@ router.post("/process", authMiddleware, upload.single("image"), async (req, res)
     dbRun("INSERT INTO tasks (id, user_id, type, status, input_path, input_size) VALUES (?, ?, ?, ?, ?, ?)",
       [taskId, req.userId, type, "processing", req.file.path, req.file.size]);
 
-    res.json({ taskId, status: "processing", message: "任务已提交" });
+    res.json({ taskId, status: "processing", message: "浠诲姟宸叉彁浜? });
 
     try {
       await TASK_HANDLERS[type](req.file.path, outputPath, { stylePrompt, bgColor });
@@ -89,21 +88,19 @@ router.post("/process", authMiddleware, upload.single("image"), async (req, res)
     } catch(e) {
       console.error("Process error:", e.message||e); if(e.stack) console.error(e.stack.split("\n").slice(0,5).join("\n"));
       dbRun("UPDATE tasks SET status = ? WHERE id = ?", ["failed", taskId]);
-      const { addCredits } = require("../services/credit");
-      addCredits(req.userId, 1, "处理失败退还");
+      // 内测版不扣额度，无须退还
     }
   } catch(e) {
     if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-    res.status(500).json({ error: "处理失败: " + e.message });
+    res.status(500).json({ error: "澶勭悊澶辫触: " + e.message });
   }
 });
 
 // ============================================================
-// 查询单个任务（含输入图片地址）
-// ============================================================
+// 鏌ヨ鍗曚釜浠诲姟锛堝惈杈撳叆鍥剧墖鍦板潃锛?// ============================================================
 router.get("/task/:id", authMiddleware, (req, res) => {
   const task = dbGet("SELECT * FROM tasks WHERE id = ? AND user_id = ?", [req.params.id, req.userId]);
-  if (!task) return res.status(404).json({ error: "任务不存在" });
+  if (!task) return res.status(404).json({ error: "浠诲姟涓嶅瓨鍦? });
   const isVec = task.type === "vectorize";
   res.json({
     id: task.id, type: task.type, status: task.status,
@@ -116,7 +113,7 @@ router.get("/task/:id", authMiddleware, (req, res) => {
 });
 
 // ============================================================
-// 查询任务列表
+// 鏌ヨ浠诲姟鍒楄〃
 // ============================================================
 router.get("/tasks", authMiddleware, (req, res) => {
   const tasks = dbAll("SELECT id, type, status, created_at, completed_at FROM tasks WHERE user_id = ? ORDER BY created_at DESC LIMIT 50", [req.userId]);
@@ -128,53 +125,52 @@ router.get("/tasks", authMiddleware, (req, res) => {
 });
 
 // ============================================================
-// 预览结果图片
+// 棰勮缁撴灉鍥剧墖
 // ============================================================
 router.get("/preview/:taskId", (req, res) => {
   let t = req.headers.authorization?.split(" ")[1] || req.query.token;
-  if (!t) return res.status(401).json({ error: "请先登录" });
+  if (!t) return res.status(401).json({ error: "璇峰厛鐧诲綍" });
   try {
     const jwt = require("jsonwebtoken");
     const decoded = jwt.verify(t, process.env.JWT_SECRET || "your-jwt-secret-change-me");
     req.userId = decoded.userId;
-  } catch(e) { return res.status(401).json({ error: "登录已过期" }); }
+  } catch(e) { return res.status(401).json({ error: "鐧诲綍宸茶繃鏈? }); }
   const task = dbGet("SELECT * FROM tasks WHERE id = ? AND user_id = ?", [req.params.taskId, req.userId]);
-  if (!task || !task.output_path) return res.status(404).json({ error: "文件不存在" });
-  if (!fs.existsSync(task.output_path)) return res.status(404).json({ error: "文件已过期" });
+  if (!task || !task.output_path) return res.status(404).json({ error: "鏂囦欢涓嶅瓨鍦? });
+  if (!fs.existsSync(task.output_path)) return res.status(404).json({ error: "鏂囦欢宸茶繃鏈? });
   res.sendFile(task.output_path);
 });
 
 // ============================================================
-// 下载结果图片
+// 涓嬭浇缁撴灉鍥剧墖
 // ============================================================
 router.get("/download/:taskId", (req, res) => {
   let t = req.headers.authorization?.split(" ")[1] || req.query.token;
-  if (!t) return res.status(401).json({ error: "请先登录" });
+  if (!t) return res.status(401).json({ error: "璇峰厛鐧诲綍" });
   try {
     const jwt = require("jsonwebtoken");
     const decoded = jwt.verify(t, process.env.JWT_SECRET || "your-jwt-secret-change-me");
     req.userId = decoded.userId;
-  } catch(e) { return res.status(401).json({ error: "登录已过期" }); }
+  } catch(e) { return res.status(401).json({ error: "鐧诲綍宸茶繃鏈? }); }
   const task = dbGet("SELECT * FROM tasks WHERE id = ? AND user_id = ?", [req.params.taskId, req.userId]);
-  if (!task || !task.output_path) return res.status(404).json({ error: "文件不存在" });
-  if (!fs.existsSync(task.output_path)) return res.status(404).json({ error: "文件已过期" });
+  if (!task || !task.output_path) return res.status(404).json({ error: "鏂囦欢涓嶅瓨鍦? });
+  if (!fs.existsSync(task.output_path)) return res.status(404).json({ error: "鏂囦欢宸茶繃鏈? });
   res.download(task.output_path);
 });
 
 // ============================================================
-// 查看原始输入图片（历史记录查看用）
-// ============================================================
+// 鏌ョ湅鍘熷杈撳叆鍥剧墖锛堝巻鍙茶褰曟煡鐪嬬敤锛?// ============================================================
 router.get("/input/:taskId", (req, res) => {
   let t = req.headers.authorization?.split(" ")[1] || req.query.token;
-  if (!t) return res.status(401).json({ error: "请先登录" });
+  if (!t) return res.status(401).json({ error: "璇峰厛鐧诲綍" });
   try {
     const jwt = require("jsonwebtoken");
     const decoded = jwt.verify(t, process.env.JWT_SECRET || "your-jwt-secret-change-me");
     req.userId = decoded.userId;
-  } catch(e) { return res.status(401).json({ error: "登录已过期" }); }
+  } catch(e) { return res.status(401).json({ error: "鐧诲綍宸茶繃鏈? }); }
   const task = dbGet("SELECT * FROM tasks WHERE id = ? AND user_id = ?", [req.params.taskId, req.userId]);
-  if (!task || !task.input_path) return res.status(404).json({ error: "文件不存在" });
-  if (!fs.existsSync(task.input_path)) return res.status(404).json({ error: "文件已过期" });
+  if (!task || !task.input_path) return res.status(404).json({ error: "鏂囦欢涓嶅瓨鍦? });
+  if (!fs.existsSync(task.input_path)) return res.status(404).json({ error: "鏂囦欢宸茶繃鏈? });
   res.sendFile(task.input_path);
 });
 

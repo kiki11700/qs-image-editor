@@ -1,6 +1,10 @@
-﻿<template>
+<template>
   <div class="max-w-2xl mx-auto pt-8">
-    <h2 class="text-2xl font-bold text-center mb-2">购买额度</h2>
+    <div class="bg-gradient-to-r from-emerald-500/20 to-emerald-400/10 border border-emerald-500/30 rounded-xl p-4 mb-6 text-center">
+  <div class="text-emerald-400 font-bold text-sm mb-1">🔧 内测版本</div>
+  <div class="text-emerald-300/80 text-xs">内测期间所有功能免费使用，次数不限</div>
+</div>
+<h2 class="text-2xl font-bold text-center mb-2">购买额度</h2>
     <p class="text-sm text-gray-500 text-center mb-8">选择套餐，获取更多修图次数</p>
 
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">

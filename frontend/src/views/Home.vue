@@ -1,9 +1,7 @@
 <template>
   <div class="pt-4 pb-12">
     <div class="text-center mb-8">
-      <h1 class="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-[#667eea] to-[#764ba2] bg-clip-text text-transparent">
-        AI 智能修图
-      </h1>
+      <h1 class="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-[#667eea] to-[#764ba2] bg-clip-text text-transparent">AI 智能修图</h1>
       <p class="text-gray-500 text-sm mt-2">上传图片，选择功能，AI 一键处理</p>
     </div>
 
@@ -12,9 +10,7 @@
       <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
         <div v-for="t in tools" :key="t.id" @click="selectTool(t.id)"
           class="relative p-4 rounded-xl cursor-pointer transition-all duration-200 text-center border"
-          :class="selectedTool === t.id
-            ? 'bg-gradient-to-br from-[#667eea]/20 to-[#764ba2]/20 border-[#667eea] shadow-lg shadow-[#667eea]/10'
-            : 'bg-white/[0.04] border-white/[0.08] hover:border-white/[0.2] hover:bg-white/[0.06]'">
+          :class="selectedTool === t.id ? 'bg-gradient-to-br from-[#667eea]/20 to-[#764ba2]/20 border-[#667eea] shadow-lg shadow-[#667eea]/10' : 'bg-white/[0.04] border-white/[0.08] hover:border-white/[0.2] hover:bg-white/[0.06]'">
           <div v-if="selectedTool === t.id" class="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-[#667eea] flex items-center justify-center text-white text-[10px]">&#10003;</div>
           <div class="text-2xl mb-1.5">{{ t.icon }}</div>
           <div class="text-sm font-semibold">{{ t.name }}</div>
@@ -25,7 +21,7 @@
 
     <div class="bg-white/[0.03] rounded-2xl border border-white/[0.08] p-6 sm:p-8">
       <div v-if="!selectedTool" class="text-center py-10 text-gray-500">
-        <div class="text-5xl mb-3">&#x1F446;</div>
+        <div class="text-5xl mb-3">👆</div>
         <div class="text-sm">请先选择一个功能</div>
       </div>
 
@@ -48,7 +44,7 @@
           <input type="file" accept="image/*" class="hidden" id="fileInput"
             @change="handleFile($event.target.files[0])" />
           <div v-if="!fileUrl" class="py-12 px-4" @click="document.getElementById('fileInput').click()">
-            <div class="text-5xl mb-3 text-gray-600">&#x1F4C1;</div>
+            <div class="text-5xl mb-3 text-gray-600">📁</div>
             <div class="text-base font-medium text-gray-400">拖拽图片到此处，或点击上传</div>
             <div class="text-xs text-gray-600 mt-2">支持 JPG / PNG / WebP，最大 100MB</div>
           </div>
@@ -66,14 +62,12 @@
         <div class="flex justify-center mt-6">
           <button @click="processImage" :disabled="!canProcess || processing"
             class="px-12 py-3 rounded-xl text-base font-bold transition-all duration-200"
-            :class="!canProcess || processing
-              ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-              : 'bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white hover:shadow-lg hover:shadow-[#667eea]/20 active:scale-[0.98]'">
+            :class="!canProcess || processing ? 'bg-gray-700 text-gray-500 cursor-not-allowed' : 'bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white hover:shadow-lg hover:shadow-[#667eea]/20 active:scale-[0.98]'">
             <span v-if="processing" class="flex items-center gap-2">
               <svg class="animate-spin h-5 w-5" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
               处理中...
             </span>
-            <span v-else>开始处理（消耗 1 次额度）</span>
+            <span v-else>开始处理（内测免费）</span>
           </button>
         </div>
         <div v-if="!store.isLoggedIn && selectedTool" class="text-center mt-2">
@@ -98,7 +92,7 @@
       </div>
       <div class="flex justify-center gap-3 mt-4">
         <button @click="downloadResult"
-          class="px-6 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white hover:shadow-lg transition-all">&#x2B07; 下载结果</button>
+          class="px-6 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white hover:shadow-lg transition-all">⬇ 下载结果</button>
         <button @click="resetAll"
           class="px-6 py-2.5 rounded-xl text-sm font-medium border border-white/[0.15] text-gray-300 hover:bg-white/[0.05] transition-all">继续处理</button>
       </div>
@@ -142,14 +136,8 @@ const selectedToolDef = computed(() => tools.find(t => t.id === selectedTool.val
 
 function handleFile(rawFile) {
   if (!rawFile) return;
-  if (!rawFile.type.startsWith("image/")) {
-    ElMessage.warning("请上传图片文件");
-    return;
-  }
-  if (rawFile.size > 100 * 1024 * 1024) {
-    ElMessage.warning("图片超过 100MB 限制");
-    return;
-  }
+  if (!rawFile.type.startsWith("image/")) { ElMessage.warning("请上传图片文件"); return; }
+  if (rawFile.size > 100 * 1024 * 1024) { ElMessage.warning("图片超过 100MB 限制"); return; }
   file.value = rawFile;
   fileUrl.value = URL.createObjectURL(rawFile);
   resultVisible.value = false;
@@ -167,11 +155,7 @@ function selectTool(id) {
 }
 
 async function processImage() {
-  if (!store.isLoggedIn) {
-    ElMessage.warning("请先登录");
-    router.push("/login");
-    return;
-  }
+  if (!store.isLoggedIn) { ElMessage.warning("请先登录"); router.push("/login"); return; }
   if (!selectedTool.value || !file.value) return;
   processing.value = true;
   resultVisible.value = false;
@@ -216,7 +200,7 @@ async function pollResult() {
       }
       if (res.data.status === "failed") {
         processing.value = false;
-        ElMessage.error("处理失败，额度已退还");
+        ElMessage.error("处理失败");
         return;
       }
     } catch (_) {}
@@ -245,12 +229,9 @@ function resetAll() {
   extraParam.value = "";
 }
 
-// 从历史记录"查看"跳转过来时自动加载结果
 onMounted(async () => {
   const taskIdParam = route.query.taskId;
-  if (taskIdParam) {
-    await loadTaskResult(taskIdParam);
-  }
+  if (taskIdParam) { await loadTaskResult(taskIdParam); }
 });
 
 async function loadTaskResult(tid) {

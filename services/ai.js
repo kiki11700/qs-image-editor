@@ -167,11 +167,11 @@ async function styleTransfer(inputPath, stylePrompt, outputPath) {
 
   let sat = 1.1, gamma = 1.0, blur = false;
   const tint = { r: 0, g: 0, b: 0 };
-  if (px.includes("动漫") || px.includes("anime") || px.includes("卡通")) { sat = 1.3; gamma = 0.9; tint.r = 10; tint.g = 5; tint.b = 15; }
-  else if (px.includes("油画") || px.includes("oil")) { sat = 1.2; gamma = 0.85; tint.r = 5; tint.g = 5; }
+  if (px.includes("动漫") || px.includes("anime") || px.includes("卡通")) { sat = 1.3; gamma = 1.111; tint.r = 10; tint.g = 5; tint.b = 15; }
+  else if (px.includes("油画") || px.includes("oil")) { sat = 1.2; gamma = 1.176; tint.r = 5; tint.g = 5; }
   else if (px.includes("水彩") || px.includes("water")) { sat = 0.9; gamma = 1.1; blur = true; tint.b = 20; }
-  else if (px.includes("复古") || px.includes("vintage") || px.includes("怀旧")) { sat = 0.8; gamma = 0.9; tint.r = 30; tint.g = 15; }
-  else if (px.includes("赛博") || px.includes("cyber") || px.includes("neon")) { sat = 1.5; gamma = 0.95; tint.b = 30; }
+  else if (px.includes("复古") || px.includes("vintage") || px.includes("怀旧")) { sat = 0.8; gamma = 1.111; tint.r = 30; tint.g = 15; }
+  else if (px.includes("赛博") || px.includes("cyber") || px.includes("neon")) { sat = 1.5; gamma = 1.053; tint.b = 30; }
 
   let pipe = sharp(inputPath).modulate({ saturation: sat });
   if (tint.r || tint.g || tint.b) pipe = pipe.tint({ r: 255 + tint.r, g: 255 + tint.g, b: 255 + tint.b });
@@ -228,3 +228,4 @@ async function generateSimilar(inputPath, outputPath) {
 }
 
 module.exports = { upscale, styleTransfer, generateSimilar, upscaleTo4K };
+

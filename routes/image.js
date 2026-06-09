@@ -41,10 +41,11 @@ const TASK_HANDLERS = {
   "extract-pattern":  async (i, o, p) => { await pattern.extractPattern(i, o); }
 };
 
+// Database helpers - FIXED: use array params with sql.js
 function dbGet(sql, params) {
   const db = getDb();
   const stmt = db.prepare(sql);
-  if (params) { for (let i = 0; i < params.length; i++) stmt.bind({ [i+1]: params[i] }); }
+  if (params) stmt.bind(params);
   if (stmt.step()) { const row = stmt.getAsObject(); stmt.free(); return row; }
   stmt.free(); return null;
 }
@@ -52,7 +53,7 @@ function dbGet(sql, params) {
 function dbAll(sql, params) {
   const db = getDb();
   const stmt = db.prepare(sql);
-  if (params) { for (let i = 0; i < params.length; i++) stmt.bind({ [i+1]: params[i] }); }
+  if (params) stmt.bind(params);
   const rows = [];
   while (stmt.step()) rows.push(stmt.getAsObject());
   stmt.free(); return rows;
@@ -60,10 +61,11 @@ function dbAll(sql, params) {
 
 function dbRun(sql, params) {
   const db = getDb();
-  const stmt = db.prepare(sql);
-  if (params) { for (let i = 0; i < params.length; i++) stmt.bind({ [i+1]: params[i] }); }
-  stmt.step();
-  stmt.free();
+  if (params) {
+    db.run(sql, params);
+  } else {
+    db.run(sql);
+  }
   saveDb();
 }
 

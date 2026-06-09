@@ -181,7 +181,7 @@ async function removeBackground(inputPath, outputPath) {
     for (let x = 0; x < w; x++) {
       const idx = y * w + x;
       const pxIdx = idx * c;
-      const r = pixels[pxIdx], g = pixels[pxIdx], b = pixels[pxIdx + 2];
+      const r = pixels[pxIdx], g = pixels[pxIdx + 1], b = pixels[pxIdx + 2];
 
       // 1. 检查是否在边缘采样颜色附近
       let minEdgeDist = Infinity;

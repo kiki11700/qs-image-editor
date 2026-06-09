@@ -1,5 +1,5 @@
 ﻿<template>
-  <div class="max-w-3xl mx-auto pt-6">
+  <div class="max-w-3xl mx-auto pt-6 px-4">
     <h2 class="text-xl font-bold mb-6">历史记录</h2>
     <div v-if="tasks.length === 0" class="text-center py-16 text-gray-600">
       <div class="text-4xl mb-3">📋</div>
@@ -48,6 +48,7 @@ const TOOLS_MAP = {
   "replace-bg": { icon: "🎨", name: "更换背景" },
   "style-transfer": { icon: "✨", name: "转风格" },
   similar: { icon: "🔀", name: "出类似图" },
+  "extract-pattern": { icon: "🖌️", name: "印花提取" },
 };
 
 function toolIcon(type) { return TOOLS_MAP[type]?.icon || "🖼️"; }

@@ -1,4 +1,4 @@
-const express = require("express");
+﻿const express = require("express");
 const multer = require("multer");
 const pathMod = require("path");
 const fs = require("fs");
@@ -7,6 +7,7 @@ const { authMiddleware } = require("./auth");
 const ai = require("../services/ai");
 const rembg = require("../services/rembg");
 const vectorize = require("../services/vectorize");
+const pattern = require("../services/pattern");
 const { v4: uuidv4 } = require("uuid");
 
 const router = express.Router();
@@ -25,24 +26,25 @@ const upload = multer({
   fileFilter: (req, file, cb) => {
     const allowed = [".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif"];
     if (allowed.includes(pathMod.extname(file.originalname).toLowerCase())) cb(null, true);
-    else cb(new Error("不支持的图片格式"));
+    else cb(new Error("Unsupported image format"));
   }
 });
 
 const TASK_HANDLERS = {
-  "upscale":       async (i, o, p) => { await ai.upscale(i, o); },
-  "upscale4k":     async (i, o, p) => { await ai.upscaleTo4K(i, o); },
-  "vectorize":     async (i, o, p) => { o = o.replace(/\.\w+$/, ".svg"); await vectorize.vectorize(i, o); },
-  "remove-bg":     async (i, o, p) => { await rembg.removeBackground(i, o); },
-  "replace-bg":    async (i, o, p) => { await rembg.replaceBackground(i, p.bgColor || "#ffffff", o); },
-  "style-transfer": async (i, o, p) => { await ai.styleTransfer(i, p.stylePrompt || "动漫风格", o); },
-  "similar":       async (i, o, p) => { await ai.generateSimilar(i, o); }
+  "upscale":          async (i, o, p) => { await ai.upscale(i, o); },
+  "upscale4k":        async (i, o, p) => { await ai.upscaleTo4K(i, o); },
+  "vectorize":        async (i, o, p) => { o = o.replace(/\.\w+$/, ".svg"); await vectorize.vectorize(i, o); },
+  "remove-bg":        async (i, o, p) => { await rembg.removeBackground(i, o); },
+  "replace-bg":       async (i, o, p) => { await rembg.replaceBackground(i, p.bgColor || "#ffffff", o); },
+  "style-transfer":   async (i, o, p) => { await ai.styleTransfer(i, p.stylePrompt || "anime style", o); },
+  "similar":          async (i, o, p) => { await ai.generateSimilar(i, o); },
+  "extract-pattern":  async (i, o, p) => { await pattern.extractPattern(i, o); }
 };
 
 function dbGet(sql, params) {
   const db = getDb();
   const stmt = db.prepare(sql);
-  if (params) stmt.bind(params);
+  if (params) { for (let i = 0; i < params.length; i++) stmt.bind({ [i+1]: params[i] }); }
   if (stmt.step()) { const row = stmt.getAsObject(); stmt.free(); return row; }
   stmt.free(); return null;
 }
@@ -50,24 +52,27 @@ function dbGet(sql, params) {
 function dbAll(sql, params) {
   const db = getDb();
   const stmt = db.prepare(sql);
-  if (params) stmt.bind(params);
+  if (params) { for (let i = 0; i < params.length; i++) stmt.bind({ [i+1]: params[i] }); }
   const rows = [];
   while (stmt.step()) rows.push(stmt.getAsObject());
   stmt.free(); return rows;
 }
 
 function dbRun(sql, params) {
-  getDb().run(sql, params || []);
+  const db = getDb();
+  const stmt = db.prepare(sql);
+  if (params) { for (let i = 0; i < params.length; i++) stmt.bind({ [i+1]: params[i] }); }
+  stmt.step();
+  stmt.free();
   saveDb();
 }
 
-// 提交处理任务
+// Submit processing task
 router.post("/process", authMiddleware, upload.single("image"), async (req, res) => {
   try {
     const { type, stylePrompt, bgColor } = req.body;
-    if (!req.file) return res.status(400).json({ error: "请上传图片" });
-    if (!TASK_HANDLERS[type]) { fs.unlinkSync(req.file.path); return res.status(400).json({ error: "不支持的类型" }); }
-    // 内测版：取消次数限制
+    if (!req.file) return res.status(400).json({ error: "Please upload an image" });
+    if (!TASK_HANDLERS[type]) { fs.unlinkSync(req.file.path); return res.status(400).json({ error: "Unsupported type" }); }
 
     const taskId = uuidv4();
     const ext = type === "vectorize" ? ".svg" : ".png";
@@ -76,27 +81,26 @@ router.post("/process", authMiddleware, upload.single("image"), async (req, res)
     dbRun("INSERT INTO tasks (id, user_id, type, status, input_path, input_size) VALUES (?, ?, ?, ?, ?, ?)",
       [taskId, req.userId, type, "processing", req.file.path, req.file.size]);
 
-    res.json({ taskId, status: "processing", message: "任务已提交" });
+    res.json({ taskId, status: "processing", message: "Task submitted" });
 
     try {
       await TASK_HANDLERS[type](req.file.path, outputPath, { stylePrompt, bgColor });
       dbRun("UPDATE tasks SET status = ?, output_path = ?, completed_at = CURRENT_TIMESTAMP WHERE id = ?",
         ["completed", outputPath, taskId]);
     } catch(e) {
-      console.error("Process error:", e.message||e); if(e.stack) console.error(e.stack.split("\n").slice(0,5).join("\n"));
+      console.error("Process error:", e.message || e);
       dbRun("UPDATE tasks SET status = ? WHERE id = ?", ["failed", taskId]);
-      // 内测版不扣额度，无须退还
     }
   } catch(e) {
     if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-    res.status(500).json({ error: "处理失败: " + e.message });
+    res.status(500).json({ error: "Process failed: " + e.message });
   }
 });
 
-// 查询单个任务
+// Get single task
 router.get("/task/:id", authMiddleware, (req, res) => {
   const task = dbGet("SELECT * FROM tasks WHERE id = ? AND user_id = ?", [req.params.id, req.userId]);
-  if (!task) return res.status(404).json({ error: "任务不存在" });
+  if (!task) return res.status(404).json({ error: "Task not found" });
   res.json({
     id: task.id, type: task.type, status: task.status,
     createdAt: task.created_at, completedAt: task.completed_at,
@@ -105,7 +109,7 @@ router.get("/task/:id", authMiddleware, (req, res) => {
   });
 });
 
-// 查询任务列表
+// List tasks
 router.get("/tasks", authMiddleware, (req, res) => {
   const tasks = dbAll("SELECT id, type, status, created_at, completed_at FROM tasks WHERE user_id = ? ORDER BY created_at DESC LIMIT 50", [req.userId]);
   res.json(tasks.map(t => ({
@@ -115,48 +119,48 @@ router.get("/tasks", authMiddleware, (req, res) => {
   })));
 });
 
-// 预览结果
+// Preview result
 router.get("/preview/:taskId", (req, res) => {
-  let t = req.headers.authorization?.split(" ")[1] || req.query.token;
-  if (!t) return res.status(401).json({ error: "请先登录" });
+  let token = req.headers.authorization?.split(" ")[1] || req.query.token;
+  if (!token) return res.status(401).json({ error: "Please login first" });
   try {
     const jwt = require("jsonwebtoken");
-    const decoded = jwt.verify(t, process.env.JWT_SECRET || "your-jwt-secret-change-me");
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || "your-jwt-secret-change-me");
     req.userId = decoded.userId;
-  } catch(e) { return res.status(401).json({ error: "登录已过期" }); }
+  } catch(e) { return res.status(401).json({ error: "Login expired" }); }
   const task = dbGet("SELECT * FROM tasks WHERE id = ? AND user_id = ?", [req.params.taskId, req.userId]);
-  if (!task || !task.output_path) return res.status(404).json({ error: "文件不存在" });
-  if (!fs.existsSync(task.output_path)) return res.status(404).json({ error: "文件已过期" });
+  if (!task || !task.output_path) return res.status(404).json({ error: "File not found" });
+  if (!fs.existsSync(task.output_path)) return res.status(404).json({ error: "File expired" });
   res.sendFile(task.output_path);
 });
 
-// 下载结果
+// Download result
 router.get("/download/:taskId", (req, res) => {
-  let t = req.headers.authorization?.split(" ")[1] || req.query.token;
-  if (!t) return res.status(401).json({ error: "请先登录" });
+  let token = req.headers.authorization?.split(" ")[1] || req.query.token;
+  if (!token) return res.status(401).json({ error: "Please login first" });
   try {
     const jwt = require("jsonwebtoken");
-    const decoded = jwt.verify(t, process.env.JWT_SECRET || "your-jwt-secret-change-me");
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || "your-jwt-secret-change-me");
     req.userId = decoded.userId;
-  } catch(e) { return res.status(401).json({ error: "登录已过期" }); }
+  } catch(e) { return res.status(401).json({ error: "Login expired" }); }
   const task = dbGet("SELECT * FROM tasks WHERE id = ? AND user_id = ?", [req.params.taskId, req.userId]);
-  if (!task || !task.output_path) return res.status(404).json({ error: "文件不存在" });
-  if (!fs.existsSync(task.output_path)) return res.status(404).json({ error: "文件已过期" });
+  if (!task || !task.output_path) return res.status(404).json({ error: "File not found" });
+  if (!fs.existsSync(task.output_path)) return res.status(404).json({ error: "File expired" });
   res.download(task.output_path);
 });
 
-// 查看原始输入图片
+// View input image
 router.get("/input/:taskId", (req, res) => {
-  let t = req.headers.authorization?.split(" ")[1] || req.query.token;
-  if (!t) return res.status(401).json({ error: "请先登录" });
+  let token = req.headers.authorization?.split(" ")[1] || req.query.token;
+  if (!token) return res.status(401).json({ error: "Please login first" });
   try {
     const jwt = require("jsonwebtoken");
-    const decoded = jwt.verify(t, process.env.JWT_SECRET || "your-jwt-secret-change-me");
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || "your-jwt-secret-change-me");
     req.userId = decoded.userId;
-  } catch(e) { return res.status(401).json({ error: "登录已过期" }); }
+  } catch(e) { return res.status(401).json({ error: "Login expired" }); }
   const task = dbGet("SELECT * FROM tasks WHERE id = ? AND user_id = ?", [req.params.taskId, req.userId]);
-  if (!task || !task.input_path) return res.status(404).json({ error: "文件不存在" });
-  if (!fs.existsSync(task.input_path)) return res.status(404).json({ error: "文件已过期" });
+  if (!task || !task.input_path) return res.status(404).json({ error: "File not found" });
+  if (!fs.existsSync(task.input_path)) return res.status(404).json({ error: "File expired" });
   res.sendFile(task.input_path);
 });
 

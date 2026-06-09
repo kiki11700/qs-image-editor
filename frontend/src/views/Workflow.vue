@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="pt-4">
     <div class="flex items-center justify-between mb-4">
       <div>
@@ -13,7 +13,6 @@
       </div>
     </div>
 
-    <!-- 工作流节点 -->
     <div class="space-y-3 mb-6">
       <div v-for="(node, idx) in nodes" :key="node.id" class="bg-white/[0.04] rounded-xl border border-white/[0.08] p-4">
         <div class="flex items-center justify-between mb-3">
@@ -41,10 +40,10 @@
           <span class="text-xs text-gray-600 ml-auto">内测免费</span>
         </div>
 
-        <!-- 第一个节点：上传图片 -->
+        <!-- First node: upload image -->
         <div v-if="idx === 0" class="mt-3">
           <div v-if="!node.file" class="border border-dashed border-white/10 rounded-lg py-6 text-center cursor-pointer hover:border-white/20" @click="triggerUpload(idx)">
-            <div class="text-2xl mb-1">📁</div>
+            <div class="text-2xl mb-1">&#x1F4E7;</div>
             <div class="text-xs text-gray-500">点击上传图片</div>
           </div>
           <div v-else class="flex items-center gap-3 p-2 rounded-lg bg-black/20">
@@ -54,20 +53,19 @@
           </div>
         </div>
 
-        <!-- 最后一个节点：显示结果 -->
+        <!-- Last node: show result -->
         <div v-if="idx === nodes.length - 1 && node.resultUrl" class="mt-3">
           <div class="text-xs text-gray-500 mb-1">处理结果</div>
           <img :src="node.resultUrl" class="max-h-[200px] rounded-lg object-contain bg-black/20" />
-          <el-button size="small" round class="mt-2" @click="downloadWorkflowResult">⬇ 下载结果</el-button>
+          <el-button size="small" round class="mt-2" @click="downloadWorkflowResult">&#x2B07; 下载结果</el-button>
         </div>
       </div>
     </div>
 
-    <!-- 流程预览 -->
     <div v-if="nodes.length >= 2" class="flex justify-center mb-4">
       <div class="flex items-center gap-1 text-gray-600 text-sm">
         <span v-for="(n, i) in nodes" :key="n.id">
-          {{ toolName(n.toolId) }}{{ i < nodes.length - 1 ? " → " : "" }}
+          {{ toolName(n.toolId) }}{{ i < nodes.length - 1 ? " →" : "" }}
         </span>
       </div>
     </div>
@@ -75,7 +73,7 @@
 </template>
 
 <script setup>
-import { ref, nextTick } from "vue";
+import { ref } from "vue";
 import { ElMessage } from "element-plus";
 import { useUserStore } from "../stores/user";
 import { useRouter } from "vue-router";
@@ -85,13 +83,14 @@ const router = useRouter();
 const store = useUserStore();
 
 const tools = [
-  { id: "upscale", icon: "🖼️", name: "转高清" },
-  { id: "upscale4k", icon: "📺", name: "转4K" },
-  { id: "vectorize", icon: "📐", name: "转矢量" },
-  { id: "remove-bg", icon: "✂️", name: "抠图去底" },
-  { id: "replace-bg", icon: "🎨", name: "更换背景" },
-  { id: "style-transfer", icon: "✨", name: "转风格" },
-  { id: "similar", icon: "🔀", name: "出类似图" },
+  { id: "upscale", icon: "\uD83D\uDDBC\uFE0F", name: "转高清" },
+  { id: "upscale4k", icon: "\uD83D\uDCFA", name: "转4K" },
+  { id: "vectorize", icon: "\uD83D\uDCD0", name: "转矢量" },
+  { id: "remove-bg", icon: "\u2702\uFE0F", name: "抠图去底" },
+  { id: "replace-bg", icon: "\uD83C\uDFA8", name: "更换背景" },
+  { id: "style-transfer", icon: "\u2728", name: "转风格" },
+  { id: "similar", icon: "\uD83D\uDD00", name: "出类似图" },
+  { id: "extract-pattern", icon: "\uD83D\uDD8C\uFE0F", name: "印花提取" },
 ];
 
 let nodeCounter = 0;
@@ -145,7 +144,7 @@ async function runWorkflow() {
     let currentFile = firstNode.file;
     for (let i = 0; i < nodes.value.length; i++) {
       const node = nodes.value[i];
-      ElMessage.info(`正在执行第 ${i + 1} 步：${toolName(node.toolId)}`);
+      ElMessage.info("正在执行第" + (i + 1) + "步：" + toolName(node.toolId));
 
       const formData = new FormData();
       formData.append("image", currentFile);
@@ -158,26 +157,20 @@ async function runWorkflow() {
       });
 
       const taskId = res.data.taskId;
-      // 轮询
       const result = await pollTask(taskId);
-      if (!result) throw new Error("第 " + (i + 1) + " 步处理失败");
+      if (!result) throw new Error("第" + (i + 1) + "步处理失败");
 
-      if (i === 0) node.resultUrl = "处理中...";
       if (i === nodes.value.length - 1) {
         node.resultUrl = "/api/image/preview/" + taskId + "?token=" + store.token;
         lastResultId.value = taskId;
       }
 
-      // 下载中间结果作为下一步输入
       if (i < nodes.value.length - 1) {
         const imgRes = await fetch("/api/image/download/" + taskId + "?token=" + store.token);
         const blob = await imgRes.blob();
         currentFile = new File([blob], "step_" + i + ".png", { type: blob.type });
       }
     }
-
-    const me = await axios.get("/api/auth/me", { headers: { Authorization: "Bearer " + store.token } });
-    store.updateCredits(me.data.credits);
     ElMessage.success("工作流执行完成！");
   } catch (e) {
     ElMessage.error(e.response?.data?.error || e.message || "工作流执行失败");

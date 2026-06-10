@@ -40,79 +40,11 @@ function sign(stringToSign, secret) {
   return crypto.createHmac("sha1", secret).update(stringToSign).digest().toString("base64");
 }
 
-/** 生成阿里云 API 请求签名头 */
-function buildHeaders(method, path, body, action, version) {
-  var date = new Date().toUTCString();
-  var md5 = crypto.createHash("md5").update(body || "").digest("base64");
-  var contentType = "application/json;charset=utf-8";
-  var v = version || "2020-03-20";
-  var stringToSign = method + "\n" + "application/json" + "\n" + md5 + "\n" + contentType + "\n" + date + "\n" + "x-acs-action:" + action + "\n" + "x-acs-version:" + v + "\n" + path;
-  var signature = sign(stringToSign, ACCESS_KEY_SECRET);
-
-  return {
-    "Authorization": "acs " + ACCESS_KEY_ID + ":" + signature,
-    "Content-Type": contentType,
-    "Content-MD5": md5,
-    "Date": date,
-    "x-acs-version": v,
-    "Accept": "application/json"
-  };
-}
-
-/** HTTP 请求封装 */
-function request(method, host, path, headers, body) {
-  return new Promise((resolve, reject) => {
-    var opts = {
-      hostname: host,
-      path: path,
-      method: method,
-      headers: headers,
-      timeout: 120000
-    };
-    var req = https.request(opts, function(res) {
-      var data = "";
-      res.on("data", function(c) { data += c; });
-      res.on("end", function() {
-        try {
-          var parsed = JSON.parse(data);
-          if (parsed.Code && parsed.Code !== "200") {
-            reject(new Error(parsed.Message || parsed.Code));
-          } else {
-            resolve(parsed);
-          }
-        } catch(e) {
-          console.error("阿里云响应解析失败:", data.substring(0, 500)); reject(new Error("Parse failed: " + data.substring(0, 200)));
-        }
-      });
-    });
-    req.on("error", function(e) { console.error("阿里云请求失败:", host, path, e.message); reject(e); });
-    req.setTimeout(120000, function() { req.destroy(); console.error("阿里云请求超时:", host, path); reject(new Error("Timeout")); });
-    if (body) req.write(body);
-    req.end();
-  });
-}
-
-/** URL 编码（POP API 专用） */
-function percentEncode(str) {
-  return encodeURIComponent(str)
-    .replace(/!/g, "%21")
-    .replace(/'/g, "%27")
-    .replace(/\(/g, "%28")
-    .replace(/\)/g, "%29")
-    .replace(/\*/g, "%2A");
-}
-
-/** POP API 签名 */
-function popSign(stringToSign, secret) {
-  return crypto.createHmac("sha1", secret + "&").update(stringToSign).digest().toString("base64");
-}
-
-/** 生成 SignatureNonce */
-function genNonce() {
-  return Date.now().toString(36) + Math.random().toString(36).substring(2, 10);
-}
-
-/** 调用 POP API（imageseg/imageenhan） */
+/**
+ * 阿里云 POP API（imageseg/imageenhan）RPC 调用
+ * 签名方式：https://help.aliyun.com/zh/sdk/product-overview/rpc-mechanism
+ * 注意：ImageContent 是 base64 大数据，只能放 POST body（JSON），不可放入 URL query
+ */
 async function callPOPApi(endpoint, version, action, params) {
   if (!ACCESS_KEY_ID || !ACCESS_KEY_SECRET) {
     throw new Error("阿里云未配置: 请设置 ALIBABA_ACCESS_KEY_ID 和 ALIBABA_ACCESS_KEY_SECRET");
@@ -121,32 +53,42 @@ async function callPOPApi(endpoint, version, action, params) {
   var body = JSON.stringify(params);
   var timestamp = new Date().toISOString().split(".")[0] + "Z";
 
-  var popParams = [
-    ["AccessKeyId", ACCESS_KEY_ID],
-    ["Action", action],
-    ["Format", "JSON"],
-    ["SignatureMethod", "HMAC-SHA1"],
-    ["SignatureNonce", genNonce()],
-    ["SignatureVersion", "1.0"],
-    ["Timestamp", timestamp],
-    ["Version", version]
-  ];
+  // POP RPC 公共参数（放入 URL query）
+  var popParams = {
+    AccessKeyId: ACCESS_KEY_ID,
+    Action: action,
+    Format: "JSON",
+    SignatureMethod: "HMAC-SHA1",
+    SignatureNonce: Date.now().toString(36) + Math.random().toString(36).substring(2, 10),
+    SignatureVersion: "1.0",
+    Timestamp: timestamp,
+    Version: version
+  };
 
-  // 排序 + 编码
-  popParams.sort(function(a, b) { return a[0] < b[0] ? -1 : 1; });
-  var canonicalized = popParams.map(function(p) {
-    return percentEncode(p[0]) + "=" + percentEncode(p[1]);
-  }).join("&");
+  // 按参数名排序并拼接 query string
+  var keys = Object.keys(popParams).sort();
+  var queryParts = keys.map(function(k) {
+    var v = popParams[k];
+    return encodeURIComponent(k) + "=" + encodeURIComponent(v);
+  });
 
-  // 签名
-  var stringToSign = "POST&" + percentEncode("/") + "&" + percentEncode(canonicalized);
-  var signature = popSign(stringToSign, ACCESS_KEY_SECRET);
-  var queryStr = canonicalized + "&" + percentEncode("Signature") + "=" + percentEncode(signature);
+  // 签名串 = POST&%2F&<percentEncode(queryString)>
+  var queryString = queryParts.join("&");
+  var stringToSign = "POST&" + encodeURIComponent("/") + "&" + encodeURIComponent(queryString);
+  var signature = crypto.createHmac("sha1", ACCESS_KEY_SECRET + "&").update(stringToSign).digest().toString("base64");
+  popParams.Signature = signature;
+
+  // 重新构建带签名的 query string
+  keys = Object.keys(popParams).sort();
+  queryParts = keys.map(function(k) {
+    return encodeURIComponent(k) + "=" + encodeURIComponent(popParams[k]);
+  });
+  var finalQuery = queryParts.join("&");
 
   return new Promise(function(resolve, reject) {
     var opts = {
       hostname: endpoint,
-      path: "/?" + queryStr,
+      path: "/?" + finalQuery,
       method: "POST",
       timeout: 120000,
       headers: { "Content-Type": "application/json;charset=utf-8" }
@@ -163,7 +105,8 @@ async function callPOPApi(endpoint, version, action, params) {
             resolve(parsed);
           }
         } catch(e) {
-          console.error("POP API 响应解析失败:", data.substring(0, 300)); reject(new Error("POP Parse failed"));
+          console.error("POP API 响应解析失败:", data.substring(0, 300));
+          reject(new Error("POP Parse failed"));
         }
       });
     });
@@ -193,7 +136,6 @@ function downloadFile(url, dest) {
 /**
  * 通义万相 API 调用（wanx2.1 新版）
  * 使用 DashScope API Key 认证
- * API 文档：https://help.aliyun.com/zh/model-studio/
  */
 async function callWanx21(messages, parameters) {
   var apiKey = process.env.ALIBABA_DASHSCOPE_API_KEY;
@@ -225,7 +167,6 @@ async function callWanx21(messages, parameters) {
       res.on("end", function() {
         try {
           var parsed = JSON.parse(data);
-          // DashScope 错误格式：{ code: "...", message: "..." }
           if (parsed.code) {
             reject(new Error("DashScope 错误: " + (parsed.message || parsed.code)));
           } else {
@@ -251,7 +192,6 @@ async function callWanx21(messages, parameters) {
 function extractImageFromWanxResponse(result) {
   if (!result || !result.output) return null;
 
-  // 格式1: choices[0].message.content[].image_url.url
   if (result.output.choices && result.output.choices.length > 0) {
     var content = result.output.choices[0].message.content;
     if (Array.isArray(content)) {
@@ -263,7 +203,6 @@ function extractImageFromWanxResponse(result) {
     }
   }
 
-  // 格式2: output.results[].url（旧版兼容）
   if (result.output.results && result.output.results.length > 0) {
     return result.output.results[0].url || result.output.results[0].image_url;
   }
@@ -273,7 +212,7 @@ function extractImageFromWanxResponse(result) {
 
 /** 保存图片（URL 下载或 base64 内联） */
 async function saveImage(imgUrl, outputPath) {
-  if (imgUrl.startsWith("data:image")) {
+  if (imgUrl && imgUrl.startsWith("data:image")) {
     var matches = imgUrl.match(/^data:image\/(\w+);base64,(.+)$/);
     if (matches) {
       fs.writeFileSync(outputPath, Buffer.from(matches[2], "base64"));
@@ -281,23 +220,33 @@ async function saveImage(imgUrl, outputPath) {
     }
     return false;
   }
-  await downloadFile(imgUrl, outputPath);
-  return true;
+  if (imgUrl) {
+    await downloadFile(imgUrl, outputPath);
+    return true;
+  }
+  return false;
 }
 
 // ============================================================
 // 1. 抠图去底
 // ============================================================
 async function removeBackground(inputPath, outputPath) {
-  // 优先通用分割（适用于人物+物体）
-  var result = await callPOPApi(SEG_ENDPOINT, "2019-12-30", "SegmentCommonImage", {
-    ImageURL: "", ImageContent: fs.readFileSync(inputPath).toString("base64")
-  });
+  try {
+    var result = await callPOPApi(SEG_ENDPOINT, "2019-12-30", "SegmentCommonImage", {
+      ImageURL: "",
+      ImageContent: fs.readFileSync(inputPath).toString("base64")
+    });
 
-  if (result && result.Data && result.Data.ImageURL) {
-    await downloadFile(result.Data.ImageURL, outputPath);
-    console.log("阿里云 抠图去底: 成功");
-    return outputPath;
+    var imgUrl = null;
+    if (result && result.Data && result.Data.ImageURL) imgUrl = result.Data.ImageURL;
+
+    if (imgUrl) {
+      await downloadFile(imgUrl, outputPath);
+      console.log("阿里云 抠图去底: 成功");
+      return outputPath;
+    }
+  } catch(e) {
+    console.error("阿里云 抠图去底 失败:", e.message);
   }
   return null;
 }
@@ -312,7 +261,9 @@ async function replaceBackground(inputPath, bgColor, outputPath) {
 
   var sharp = require("sharp");
   var meta = await sharp(tmpPath).metadata();
-  var bg = await sharp({ create: { width: meta.width, height: meta.height, channels: 4, background: bgColor || "#ffffff" } }).png().toBuffer();
+  var bg = await sharp({
+    create: { width: meta.width, height: meta.height, channels: 4, background: bgColor || "#ffffff" }
+  }).png().toBuffer();
   await sharp(bg).composite([{ input: tmpPath, top: 0, left: 0 }]).toFile(outputPath);
   try { fs.unlinkSync(tmpPath); } catch(e) {}
   console.log("阿里云 换背景: 成功");
@@ -325,13 +276,15 @@ async function replaceBackground(inputPath, bgColor, outputPath) {
 async function upscale4K(inputPath, outputPath) {
   try {
     var result = await callPOPApi(ENHANCE_ENDPOINT, "2019-09-30", "MakeSuperResolutionImage", {
-      ImageURL: "", ImageContent: fs.readFileSync(inputPath).toString("base64"),
+      ImageURL: "",
+      ImageContent: fs.readFileSync(inputPath).toString("base64"),
       UpscaleFactor: 4,
       OutputFormat: "png"
     });
 
     var picUrl = null;
     if (result && result.PictureUrl) picUrl = result.PictureUrl;
+    else if (result && result.Data && result.Data.ImageURL) picUrl = result.Data.ImageURL;
     else if (result && result.Data && result.Data.PictureUrl) picUrl = result.Data.PictureUrl;
 
     if (picUrl) {

@@ -45,6 +45,13 @@ function sign(stringToSign, secret) {
  * 签名方式：https://help.aliyun.com/zh/sdk/product-overview/rpc-mechanism
  * 注意：ImageContent 是 base64 大数据，只能放 POST body（JSON），不可放入 URL query
  */
+/**
+ * 阿里云 POP API RPC 调用
+ * 签名方式：所有参数（含业务参数）参与签名
+ * 参考：https://help.aliyun.com/zh/sdk/product-overview/rpc-mechanism
+ * 
+ * params 中的值如果包含 +/= 等特殊字符（如 base64），必须用阿里云百分号编码
+ */
 async function callPOPApi(endpoint, version, action, params) {
   if (!ACCESS_KEY_ID || !ACCESS_KEY_SECRET) {
     throw new Error("阿里云未配置: 请设置 ALIBABA_ACCESS_KEY_ID 和 ALIBABA_ACCESS_KEY_SECRET");
@@ -52,36 +59,61 @@ async function callPOPApi(endpoint, version, action, params) {
 
   var body = JSON.stringify(params);
   var timestamp = new Date().toISOString().split(".")[0] + "Z";
+  var nonce = Date.now().toString(36) + Math.random().toString(36).substring(2, 10);
 
-  // POP RPC 公共参数（放入 URL query）
-  var popParams = {
+  // 所有参数合并（公共参数 + 业务参数）
+  var allParams = {
     AccessKeyId: ACCESS_KEY_ID,
     Action: action,
     Format: "JSON",
     SignatureMethod: "HMAC-SHA1",
-    SignatureNonce: Date.now().toString(36) + Math.random().toString(36).substring(2, 10),
+    SignatureNonce: nonce,
     SignatureVersion: "1.0",
     Timestamp: timestamp,
     Version: version
   };
+  // 合并业务参数
+  for (var pk in params) {
+    if (params.hasOwnProperty(pk)) {
+      allParams[pk] = params[pk];
+    }
+  }
 
-  // 按参数名排序并拼接 query string
-  var keys = Object.keys(popParams).sort();
-  var queryParts = keys.map(function(k) {
-    var v = popParams[k];
-    return encodeURIComponent(k) + "=" + encodeURIComponent(v);
-  });
+  // 阿里云标准百分号编码（RFC 3986）
+  function percentEncode(str) {
+    return encodeURIComponent(str)
+      .replace(/!/g, "%21")
+      .replace(/'/g, "%27")
+      .replace(/\(/g, "%28")
+      .replace(/\)/g, "%29")
+      .replace(/\*/g, "%2A");
+  }
 
-  // 签名串 = POST&%2F&<percentEncode(queryString)>
-  var queryString = queryParts.join("&");
-  var stringToSign = "POST&" + encodeURIComponent("/") + "&" + encodeURIComponent(queryString);
+  // 按参数名排序
+  var sortedKeys = Object.keys(allParams).sort();
+  var canonicalized = sortedKeys.map(function(k) {
+    return percentEncode(k) + "=" + percentEncode(String(allParams[k]));
+  }).join("&");
+
+  // 构造待签名字符串
+  var stringToSign = "POST&" + percentEncode("/") + "&" + percentEncode(canonicalized);
   var signature = crypto.createHmac("sha1", ACCESS_KEY_SECRET + "&").update(stringToSign).digest().toString("base64");
-  popParams.Signature = signature;
 
-  // 重新构建带签名的 query string
-  keys = Object.keys(popParams).sort();
-  queryParts = keys.map(function(k) {
-    return encodeURIComponent(k) + "=" + encodeURIComponent(popParams[k]);
+  // 只需要公共参数在 URL query 中（含 Signature）
+  var queryParams = {
+    AccessKeyId: ACCESS_KEY_ID,
+    Action: action,
+    Format: "JSON",
+    SignatureMethod: "HMAC-SHA1",
+    SignatureNonce: nonce,
+    SignatureVersion: "1.0",
+    Timestamp: timestamp,
+    Version: version,
+    Signature: signature
+  };
+  var qKeys = Object.keys(queryParams).sort();
+  var queryParts = qKeys.map(function(k) {
+    return percentEncode(k) + "=" + percentEncode(queryParams[k]);
   });
   var finalQuery = queryParts.join("&");
 
@@ -364,3 +396,4 @@ module.exports = {
   styleTransfer,
   generateSimilar
 };
+

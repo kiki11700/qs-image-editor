@@ -3,10 +3,10 @@ const fs = require("fs");
 const https = require("https");
 
 // ============================================================
-// ¿ÙÍ¼È¥µ×·þÎñ - ÍêÈ«Ìæ»» Replicate
-//   1. °¢ÀïÔÆ£¨Ö÷Á¦£©
-//   2. °Ù¶È AI API£¨¹úÄÚ½µ¼¶£©
-//   3. Sharp ¼òÒ×Ëã·¨£¨×îÖÕ¶µµ×£©
+// ï¿½ï¿½Í¼È¥ï¿½×·ï¿½ï¿½ï¿½ - ï¿½ï¿½È«ï¿½æ»» Replicate
+//   1. ï¿½ï¿½ï¿½ï¿½ï¿½Æ£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+//   2. ï¿½Ù¶ï¿½ AI APIï¿½ï¿½ï¿½ï¿½ï¿½Ú½ï¿½ï¿½ï¿½ï¿½ï¿½
+//   3. Sharp ï¿½ï¿½ï¿½ï¿½ï¿½ã·¨ï¿½ï¿½ï¿½ï¿½ï¿½Õ¶ï¿½ï¿½×£ï¿½
 // ============================================================
 
 let alibaba = null;
@@ -15,7 +15,7 @@ try { alibaba = require("./alibaba"); } catch(e) {}
 let baiduAI = null;
 try { baiduAI = require("./baidu"); } catch(e) {}
 
-// ---------- Sharp ¶µµ× ----------
+// ---------- Sharp ï¿½ï¿½ï¿½ï¿½ ----------
 async function removeWithSharp(inputPath, outputPath) {
   var info = await sharp(inputPath).metadata();
   var { data, info: rawInfo } = await sharp(inputPath).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
@@ -65,33 +65,33 @@ async function removeWithSharp(inputPath, outputPath) {
 }
 
 // ============================================================
-// ¶ÔÍâ½Ó¿Ú
+// ï¿½ï¿½ï¿½ï¿½Ó¿ï¿½
 // ============================================================
 
 async function removeBackground(inputPath, outputPath) {
-  // 1. °¢ÀïÔÆ£¨Ö÷Á¦£©
+  // 1. ï¿½ï¿½ï¿½ï¿½ï¿½Æ£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
   if (alibaba) {
-    try { var r = await alibaba.removeBackground(inputPath, outputPath); if (r) { console.log("°¢ÀïÔÆ ¿ÙÍ¼³É¹¦"); return r; } } catch(e) { console.error("°¢ÀïÔÆ ¿ÙÍ¼Ê§°Ü:", e.message); }
+    try { var r = await alibaba.removeBackground(inputPath, outputPath); if (r) { console.log("ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Í¼ï¿½É¹ï¿½"); return r; } } catch(e) { console.error("ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Í¼Ê§ï¿½ï¿½:", e.message); }
   }
-  // 2. °Ù¶È AI£¨½µ¼¶£©
+  // 2. ï¿½Ù¶ï¿½ AIï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
   if (baiduAI) {
-    try { var r = await baiduAI.removeBackground(inputPath, outputPath); if (r) { console.log("°Ù¶ÈAI ¿ÙÍ¼³É¹¦"); return r; } } catch(e) { console.error("°Ù¶ÈAI ¿ÙÍ¼Ê§°Ü:", e.message); }
+    try { var r = await baiduAI.removeBackground(inputPath, outputPath); if (r) { console.log("ï¿½Ù¶ï¿½AI ï¿½ï¿½Í¼ï¿½É¹ï¿½"); return r; } } catch(e) { console.error("ï¿½Ù¶ï¿½AI ï¿½ï¿½Í¼Ê§ï¿½ï¿½:", e.message); }
   }
-  // 3. Sharp ¶µµ×
-  console.log("Sharp ¶µµ×¿ÙÍ¼");
+  // 3. Sharp ï¿½ï¿½ï¿½ï¿½
+  console.log("Sharp ï¿½ï¿½ï¿½×¿ï¿½Í¼");
   return await removeWithSharp(inputPath, outputPath);
 }
 
 async function replaceBackground(inputPath, bgColor, outputPath) {
-  // 1. °¢ÀïÔÆ
+  // 1. ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
   if (alibaba) {
-    try { var r = await alibaba.replaceBackground(inputPath, bgColor, outputPath); if (r) { console.log("°¢ÀïÔÆ »»±³¾°³É¹¦"); return r; } } catch(e) { console.error("°¢ÀïÔÆ »»±³¾°Ê§°Ü:", e.message); }
+    try { var r = await alibaba.replaceBackground(inputPath, bgColor, outputPath); if (r) { console.log("ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É¹ï¿½"); return r; } } catch(e) { console.error("ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê§ï¿½ï¿½:", e.message); }
   }
-  // 2. °Ù¶È AI
+  // 2. ï¿½Ù¶ï¿½ AI
   if (baiduAI) {
-    try { var r = await baiduAI.replaceBackground(inputPath, bgColor, outputPath); if (r) { console.log("°Ù¶ÈAI »»±³¾°³É¹¦"); return r; } } catch(e) { console.error("°Ù¶ÈAI »»±³¾°Ê§°Ü:", e.message); }
+    try { var r = await baiduAI.replaceBackground(inputPath, bgColor, outputPath); if (r) { console.log("ï¿½Ù¶ï¿½AI ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É¹ï¿½"); return r; } } catch(e) { console.error("ï¿½Ù¶ï¿½AI ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê§ï¿½ï¿½:", e.message); }
   }
-  // 3. ±¾µØºÏ³É
+  // 3. ï¿½ï¿½ï¿½ØºÏ³ï¿½
   var tmpPath = outputPath.replace(/\.\w+$/, "_nobg.png");
   await removeBackground(inputPath, tmpPath);
   var meta = await sharp(tmpPath).metadata();

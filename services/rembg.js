@@ -1,21 +1,17 @@
-const sharp = require("sharp");
+﻿const sharp = require("sharp");
 const fs = require("fs");
 const https = require("https");
 
 // ============================================================
-// ��ͼȥ�׷��� - ��ȫ�滻 Replicate
-//   1. �����ƣ�������
-//   2. �ٶ� AI API�����ڽ�����
-//   3. Sharp �����㷨�����ն��ף�
+// 抠图去底服务
+//   1. 阿里云（主力）
+//   2. Sharp 简易算法（最终兜底）
 // ============================================================
 
 let alibaba = null;
 try { alibaba = require("./alibaba"); } catch(e) {}
 
-let baiduAI = null;
-try { baiduAI = require("./baidu"); } catch(e) {}
-
-// ---------- Sharp ���� ----------
+// ---------- Sharp 兜底 ----------
 async function removeWithSharp(inputPath, outputPath) {
   var info = await sharp(inputPath).metadata();
   var { data, info: rawInfo } = await sharp(inputPath).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
@@ -65,33 +61,31 @@ async function removeWithSharp(inputPath, outputPath) {
 }
 
 // ============================================================
-// ����ӿ�
+// 对外接口
 // ============================================================
 
 async function removeBackground(inputPath, outputPath) {
-  // 1. �����ƣ�������
+  // 1. 阿里云（主力）
   if (alibaba) {
-    try { var r = await alibaba.removeBackground(inputPath, outputPath); if (r) { console.log("������ ��ͼ�ɹ�"); return r; } } catch(e) { console.error("������ ��ͼʧ��:", e.message); }
+    try {
+      var r = await alibaba.removeBackground(inputPath, outputPath);
+      if (r) { console.log("阿里云 抠图成功"); return r; }
+    } catch(e) { console.error("阿里云 抠图失败:", e.message); }
   }
-  // 2. �ٶ� AI��������
-  if (baiduAI) {
-    try { var r = await baiduAI.removeBackground(inputPath, outputPath); if (r) { console.log("�ٶ�AI ��ͼ�ɹ�"); return r; } } catch(e) { console.error("�ٶ�AI ��ͼʧ��:", e.message); }
-  }
-  // 3. Sharp ����
-  console.log("Sharp ���׿�ͼ");
+  // 2. Sharp 兜底
+  console.log("Sharp 兜底抠图");
   return await removeWithSharp(inputPath, outputPath);
 }
 
 async function replaceBackground(inputPath, bgColor, outputPath) {
-  // 1. ������
+  // 1. 阿里云（主力）
   if (alibaba) {
-    try { var r = await alibaba.replaceBackground(inputPath, bgColor, outputPath); if (r) { console.log("������ �������ɹ�"); return r; } } catch(e) { console.error("������ ������ʧ��:", e.message); }
+    try {
+      var r = await alibaba.replaceBackground(inputPath, bgColor, outputPath);
+      if (r) { console.log("阿里云 换背景成功"); return r; }
+    } catch(e) { console.error("阿里云 换背景失败:", e.message); }
   }
-  // 2. �ٶ� AI
-  if (baiduAI) {
-    try { var r = await baiduAI.replaceBackground(inputPath, bgColor, outputPath); if (r) { console.log("�ٶ�AI �������ɹ�"); return r; } } catch(e) { console.error("�ٶ�AI ������ʧ��:", e.message); }
-  }
-  // 3. ���غϳ�
+  // 2. 本地合成
   var tmpPath = outputPath.replace(/\.\w+$/, "_nobg.png");
   await removeBackground(inputPath, tmpPath);
   var meta = await sharp(tmpPath).metadata();

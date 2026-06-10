@@ -92,7 +92,7 @@ function request(method, host, path, headers, body) {
   });
 }
 
-/** URL ?????? POP API ??? */
+/** URL 编码（POP API 专用） */
 function percentEncode(str) {
   return encodeURIComponent(str)
     .replace(/!/g, "%21")
@@ -102,20 +102,20 @@ function percentEncode(str) {
     .replace(/\*/g, "%2A");
 }
 
-/** ?? POP API ?? */
+/** POP API 签名 */
 function popSign(stringToSign, secret) {
   return crypto.createHmac("sha1", secret + "&").update(stringToSign).digest().toString("base64");
 }
 
-/** ???????SignatureNonce? */
+/** 生成 SignatureNonce */
 function genNonce() {
   return Date.now().toString(36) + Math.random().toString(36).substring(2, 10);
 }
 
-/** ?? POP API?imageseg/imageenhan ??????? */
+/** 调用 POP API（imageseg/imageenhan） */
 async function callPOPApi(endpoint, version, action, params) {
   if (!ACCESS_KEY_ID || !ACCESS_KEY_SECRET) {
-    throw new Error("??????: ??? ALIBABA_ACCESS_KEY_ID ? ALIBABA_ACCESS_KEY_SECRET");
+    throw new Error("阿里云未配置: 请设置 ALIBABA_ACCESS_KEY_ID 和 ALIBABA_ACCESS_KEY_SECRET");
   }
 
   var body = JSON.stringify(params);
@@ -132,13 +132,13 @@ async function callPOPApi(endpoint, version, action, params) {
     ["Version", version]
   ];
 
-  // ?? + ??
+  // 排序 + 编码
   popParams.sort(function(a, b) { return a[0] < b[0] ? -1 : 1; });
   var canonicalized = popParams.map(function(p) {
     return percentEncode(p[0]) + "=" + percentEncode(p[1]);
   }).join("&");
 
-  // ??
+  // 签名
   var stringToSign = "POST&" + percentEncode("/") + "&" + percentEncode(canonicalized);
   var signature = popSign(stringToSign, ACCESS_KEY_SECRET);
   var queryStr = canonicalized + "&" + percentEncode("Signature") + "=" + percentEncode(signature);
@@ -160,41 +160,129 @@ async function callPOPApi(endpoint, version, action, params) {
           if (parsed.Code && parsed.Code !== "200") {
             reject(new Error(parsed.Message || parsed.Code));
           } else {
-            resolve(parsed.Data || parsed);
+            resolve(parsed);
           }
         } catch(e) {
-          console.error("?????????:", data.substring(0, 500));
-          reject(new Error("Parse failed: " + data.substring(0, 200)));
+          console.error("POP API 响应解析失败:", data.substring(0, 300)); reject(new Error("POP Parse failed"));
         }
       });
     });
-    req.on("error", function(e) { console.error("???????:", endpoint, e.message); reject(e); });
-    req.setTimeout(120000, function() { req.destroy(); console.error("???????:", endpoint); reject(new Error("Timeout")); });
+    req.on("error", function(e) { console.error("POP API 请求失败:", e.message); reject(e); });
+    req.setTimeout(120000, function() { req.destroy(); reject(new Error("POP Timeout")); });
     req.write(body);
     req.end();
   });
 }
 
-function imagePayload(inputPath, type) {
-  var buf = fs.readFileSync(inputPath);
-  var base64 = buf.toString("base64");
-  return { ImageURL: "", ImageContent: base64 };
-}
-
 /** 下载文件 */
 function downloadFile(url, dest) {
-  return new Promise((resolve, reject) => {
+  return new Promise(function(resolve, reject) {
     var file = fs.createWriteStream(dest);
-    https.get(url, function(res) {
+    var mod = url.startsWith("https") ? https : require("http");
+    mod.get(url, function(res) {
       if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        file.close();
-        if (fs.existsSync(dest)) fs.unlinkSync(dest);
+        file.close(); if (fs.existsSync(dest)) fs.unlinkSync(dest);
         return downloadFile(res.headers.location, dest).then(resolve).catch(reject);
       }
       res.pipe(file);
       file.on("finish", function() { file.close(); resolve(dest); });
     }).on("error", function(err) { file.close(); if (fs.existsSync(dest)) fs.unlinkSync(dest); reject(err); });
   });
+}
+
+/**
+ * 通义万相 API 调用（wanx2.1 新版）
+ * 使用 DashScope API Key 认证
+ * API 文档：https://help.aliyun.com/zh/model-studio/
+ */
+async function callWanx21(messages, parameters) {
+  var apiKey = process.env.ALIBABA_DASHSCOPE_API_KEY;
+  if (!apiKey) {
+    throw new Error("阿里云 DashScope 未配置: 请设置 ALIBABA_DASHSCOPE_API_KEY");
+  }
+
+  var body = JSON.stringify({
+    model: "wanx2.1-t2i-turbo",
+    input: { messages: messages },
+    parameters: parameters || { size: "1024x1024", n: 1 }
+  });
+
+  return new Promise((resolve, reject) => {
+    var opts = {
+      hostname: DASHSCOPE_ENDPOINT,
+      path: "/api/v1/services/aigc/image-generation/generation",
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + apiKey,
+        "X-DashScope-Async": "disable"
+      },
+      timeout: 180000
+    };
+    var req = https.request(opts, function(res) {
+      var data = "";
+      res.on("data", function(c) { data += c; });
+      res.on("end", function() {
+        try {
+          var parsed = JSON.parse(data);
+          // DashScope 错误格式：{ code: "...", message: "..." }
+          if (parsed.code) {
+            reject(new Error("DashScope 错误: " + (parsed.message || parsed.code)));
+          } else {
+            resolve(parsed);
+          }
+        } catch(e) {
+          console.error("DashScope 响应解析失败:", data.substring(0, 300));
+          reject(new Error("DashScope 响应解析失败"));
+        }
+      });
+    });
+    req.on("error", function(e) {
+      console.error("DashScope 请求失败:", DASHSCOPE_ENDPOINT, e.message);
+      reject(e);
+    });
+    req.setTimeout(180000, function() { req.destroy(); reject(new Error("DashScope 请求超时")); });
+    req.write(body);
+    req.end();
+  });
+}
+
+/** 从 wanx2.1 响应中提取图片 URL */
+function extractImageFromWanxResponse(result) {
+  if (!result || !result.output) return null;
+
+  // 格式1: choices[0].message.content[].image_url.url
+  if (result.output.choices && result.output.choices.length > 0) {
+    var content = result.output.choices[0].message.content;
+    if (Array.isArray(content)) {
+      for (var ci = 0; ci < content.length; ci++) {
+        if (content[ci].type === "image_url" && content[ci].image_url && content[ci].image_url.url) {
+          return content[ci].image_url.url;
+        }
+      }
+    }
+  }
+
+  // 格式2: output.results[].url（旧版兼容）
+  if (result.output.results && result.output.results.length > 0) {
+    return result.output.results[0].url || result.output.results[0].image_url;
+  }
+
+  return null;
+}
+
+/** 保存图片（URL 下载或 base64 内联） */
+async function saveImage(imgUrl, outputPath) {
+  if (imgUrl.startsWith("data:image")) {
+    var matches = imgUrl.match(/^data:image\/(\w+);base64,(.+)$/);
+    if (matches) {
+      fs.writeFileSync(outputPath, Buffer.from(matches[2], "base64"));
+      return true;
+    }
+    return false;
+  }
+  await downloadFile(imgUrl, outputPath);
+  return true;
 }
 
 // ============================================================
@@ -206,52 +294,12 @@ async function removeBackground(inputPath, outputPath) {
     ImageURL: "", ImageContent: fs.readFileSync(inputPath).toString("base64")
   });
 
-  // 如果通用分割结果不理想，尝试人像分割
-  if (!result || !result.PictureUrl) {
-    result = await callPOPApi(SEG_ENDPOINT, "2019-12-30", "SegmentBody", {
-      ImageURL: "", ImageContent: fs.readFileSync(inputPath).toString("base64")
-    });
-  }
-
-  if (result && result.PictureUrl) {
-    await downloadFile(result.PictureUrl, outputPath);
-    console.log("阿里云 抠图: 成功");
+  if (result && result.Data && result.Data.ImageURL) {
+    await downloadFile(result.Data.ImageURL, outputPath);
+    console.log("阿里云 抠图去底: 成功");
     return outputPath;
   }
-
-  // 走备用方案：获取分割结果后合成
-  if (result && (result.Elements || result.MaskURL)) {
-    var maskUrl = result.MaskURL || result.Elements[0].MaskURL;
-    if (maskUrl) {
-      await applyMask(inputPath, maskUrl, outputPath);
-      console.log("阿里云 抠图(掩码): 成功");
-      return outputPath;
-    }
-  }
-
   return null;
-}
-
-/** 用掩码合成抠图结果 */
-async function applyMask(inputPath, maskUrl, outputPath) {
-  var sharp = require("sharp");
-  var [imgData, maskBuffer] = await Promise.all([
-    sharp(inputPath).ensureAlpha().raw().toBuffer({ resolveWithObject: true }),
-    downloadFile(maskUrl, outputPath + ".mask")
-  ]);
-  var maskRaw = await sharp(maskBuffer).raw().toBuffer({ resolveWithObject: true });
-  try { fs.unlinkSync(outputPath + ".mask"); } catch(e) {}
-
-  var w = imgData.info.width, h = imgData.info.height, c = imgData.info.channels;
-  var rgba = Buffer.alloc(w * h * 4);
-  for (var i = 0; i < w * h; i++) {
-    var px = i * c, out = i * 4;
-    rgba[out] = imgData.data[px];
-    rgba[out + 1] = imgData.data[px + 1];
-    rgba[out + 2] = imgData.data[px + 2];
-    rgba[out + 3] = maskRaw.data[i * maskRaw.info.channels];
-  }
-  await sharp(rgba, { raw: { width: w, height: h, channels: 4 } }).png().toFile(outputPath);
 }
 
 // ============================================================
@@ -275,45 +323,54 @@ async function replaceBackground(inputPath, bgColor, outputPath) {
 // 3. 转4K高清（图像超分辨率）
 // ============================================================
 async function upscale4K(inputPath, outputPath) {
-  var result = await callPOPApi(ENHANCE_ENDPOINT, "2019-09-30", "MakeSuperResolutionImage", {
-    ImageURL: "", ImageContent: fs.readFileSync(inputPath).toString("base64"),
-    UpscaleFactor: 4,
-    OutputFormat: "png"
-  });
+  try {
+    var result = await callPOPApi(ENHANCE_ENDPOINT, "2019-09-30", "MakeSuperResolutionImage", {
+      ImageURL: "", ImageContent: fs.readFileSync(inputPath).toString("base64"),
+      UpscaleFactor: 4,
+      OutputFormat: "png"
+    });
 
-  if (result && result.PictureUrl) {
-    await downloadFile(result.PictureUrl, outputPath);
-    console.log("阿里云 转4K: 成功");
-    return outputPath;
+    var picUrl = null;
+    if (result && result.PictureUrl) picUrl = result.PictureUrl;
+    else if (result && result.Data && result.Data.PictureUrl) picUrl = result.Data.PictureUrl;
+
+    if (picUrl) {
+      await downloadFile(picUrl, outputPath);
+      console.log("阿里云 转4K: 成功");
+      return outputPath;
+    }
+  } catch(e) {
+    console.error("阿里云 转4K API 调用失败:", e.message);
   }
   return null;
 }
 
 // ============================================================
-// 4. 风格迁移
+// 4. 风格迁移 - 使用通义万相 wanx2.1
 // ============================================================
 async function styleTransfer(inputPath, stylePrompt, outputPath) {
-  // 使用通义万相 API 进行风格迁移
-  var result = await callDashScope("wanx-image-generation-v1", {
-    model: "wanx-image-generation-v1",
-    input: {
-      image: { type: "image", imageContent: fs.readFileSync(inputPath).toString("base64") },
-      prompt: "将这张图片转换成" + (stylePrompt || "动漫风格") + "风格"
-    },
-    parameters: {
-      style: stylePrompt || "anime",
-      n: 1,
-      size: "1024*1024"
-    }
-  });
+  try {
+    var imgB64 = fs.readFileSync(inputPath).toString("base64");
+    var styleText = stylePrompt || "anime";
 
-  if (result && result.output && result.output.results && result.output.results.length > 0) {
-    var imgUrl = result.output.results[0].url;
+    var result = await callWanx21([
+      {
+        role: "user",
+        content: [
+          { type: "image_url", image_url: { url: "data:image/png;base64," + imgB64 } },
+          { type: "text", text: "将这张图片的风格转换成" + styleText + "风格，保持原图内容和构图不变" }
+        ]
+      }
+    ], { size: "1024x1024", n: 1 });
+
+    var imgUrl = extractImageFromWanxResponse(result);
     if (imgUrl) {
-      await downloadFile(imgUrl, outputPath);
+      await saveImage(imgUrl, outputPath);
       console.log("阿里云 风格迁移: 成功");
       return outputPath;
     }
+  } catch(e) {
+    console.error("阿里云 风格迁移 API 调用失败:", e.message);
   }
   return null;
 }
@@ -322,70 +379,29 @@ async function styleTransfer(inputPath, stylePrompt, outputPath) {
 // 5. 出类似图（图生图）
 // ============================================================
 async function generateSimilar(inputPath, outputPath) {
-  var result = await callDashScope("wanx-image-generation-v1", {
-    model: "wanx-image-generation-v1",
-    input: {
-      image: { type: "image", imageContent: fs.readFileSync(inputPath).toString("base64") },
-      prompt: "以这张图片为参考，生成一张风格相似的图片"
-    },
-    parameters: {
-      n: 1,
-      size: "1024*1024",
-      imageCount: 1
-    }
-  });
+  try {
+    var imgB64 = fs.readFileSync(inputPath).toString("base64");
 
-  if (result && result.output && result.output.results && result.output.results.length > 0) {
-    var imgUrl = result.output.results[0].url;
+    var result = await callWanx21([
+      {
+        role: "user",
+        content: [
+          { type: "image_url", image_url: { url: "data:image/png;base64," + imgB64 } },
+          { type: "text", text: "以这张图片为参考，生成一张风格和构图相似的图片，保持主体一致但略有变化" }
+        ]
+      }
+    ], { size: "1024x1024", n: 1 });
+
+    var imgUrl = extractImageFromWanxResponse(result);
     if (imgUrl) {
-      await downloadFile(imgUrl, outputPath);
+      await saveImage(imgUrl, outputPath);
       console.log("阿里云 出类似图: 成功");
       return outputPath;
     }
+  } catch(e) {
+    console.error("阿里云 出类似图 API 调用失败:", e.message);
   }
   return null;
-}
-
-// ============================================================
-// 通义万相 API 调用
-// ============================================================
-async function callDashScope(model, params) {
-  if (!ACCESS_KEY_ID || !ACCESS_KEY_SECRET) {
-    throw new Error("阿里云未配置");
-  }
-
-  var body = JSON.stringify(params);
-  // DashScope 使用不同的认证方式（API Key）
-  var dashscopeApiKey = process.env.ALIBABA_DASHSCOPE_API_KEY || ACCESS_KEY_ID;
-
-  return new Promise((resolve, reject) => {
-    var opts = {
-      hostname: DASHSCOPE_ENDPOINT,
-      path: "/api/v1/services/aigc/image-generation/generation",
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer " + dashscopeApiKey,
-        "X-DashScope-Async": "disable"
-      },
-      timeout: 180000
-    };
-    var req = https.request(opts, function(res) {
-      var data = "";
-      res.on("data", function(c) { data += c; });
-      res.on("end", function() {
-        try {
-          var parsed = JSON.parse(data);
-          if (parsed.code) reject(new Error(parsed.message || parsed.code));
-          else resolve(parsed);
-        } catch(e) { reject(new Error("DashScope parse failed")); }
-      });
-    });
-    req.on("error", function(e) { console.error("阿里云请求失败:", host, path, e.message); reject(e); });
-    req.setTimeout(180000, function() { req.destroy(); reject(new Error("DashScope Timeout")); });
-    req.write(body);
-    req.end();
-  });
 }
 
 module.exports = {

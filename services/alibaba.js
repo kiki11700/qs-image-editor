@@ -119,7 +119,7 @@ async function callPOPApi(endpoint, version, action, params) {
   }
 
   var body = JSON.stringify(params);
-  var timestamp = new Date().toISOString().replace(/..+/, "Z");
+  var timestamp = new Date().toISOString().split(".")[0] + "Z";
 
   var popParams = [
     ["AccessKeyId", ACCESS_KEY_ID],

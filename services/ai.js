@@ -3,13 +3,13 @@ const fs = require("fs");
 const https = require("https");
 
 // ============================================================
-// Í³Ò» AI ·þÎñ - ÍêÈ«Ìæ»» Replicate
-//   1. °¢ÀïÔÆ£¨Ö÷Á¦£©
-//   2. Sharp Ëã·¨£¨ÖÕ¼«¶µµ×£©
+// Í³Ò» AI ï¿½ï¿½ï¿½ï¿½ - ï¿½ï¿½È«ï¿½æ»» Replicate
+//   1. ï¿½ï¿½ï¿½ï¿½ï¿½Æ£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+//   2. Sharp ï¿½ã·¨ï¿½ï¿½ï¿½Õ¼ï¿½ï¿½ï¿½ï¿½×£ï¿½
 // ============================================================
 
 let alibaba = null;
-try { alibaba = require("./alibaba"); } catch(e) { console.error("°¢ÀïÔÆ AI µ÷ÓÃÊ§°Ü:", e && e.message || "unknown"); }
+try { alibaba = require("./alibaba"); } catch(e) { console.error("ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ AI ï¿½ï¿½ï¿½ï¿½Ê§ï¿½ï¿½:", e && e.message || "unknown"); }
 
 function downloadFile(url, dest) {
   return new Promise(function(resolve, reject) {
@@ -27,11 +27,11 @@ function downloadFile(url, dest) {
 }
 
 // ============================================================
-// 1. ×ª¸ßÇå (2x)
+// 1. ×ªï¿½ï¿½ï¿½ï¿½ (2x)
 // ============================================================
 async function upscale(inputPath, outputPath) {
   if (alibaba) {
-    try { var r = await alibaba.upscale4K(inputPath, outputPath); if (r) { console.log("°¢ÀïÔÆ ³¬·Ö³É¹¦"); return r; } } catch(e) { console.error("°¢ÀïÔÆ AI µ÷ÓÃÊ§°Ü:", e && e.message || "unknown"); }
+    try { var r = await alibaba.upscale4K(inputPath, outputPath); if (r) { console.log("ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ö³É¹ï¿½"); return r; } } catch(e) { console.error("ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ AI ï¿½ï¿½ï¿½ï¿½Ê§ï¿½ï¿½:", e && e.message || "unknown"); }
   }
   var meta = await sharp(inputPath).metadata();
   await sharp(inputPath).resize(Math.round(meta.width * 2), Math.round(meta.height * 2), { kernel: sharp.kernel.lanczos3, fit: "fill", withoutReduction: true }).sharpen({ sigma: 1.5, m1: 0.5, m2: 1.0 }).png().toFile(outputPath);
@@ -39,11 +39,11 @@ async function upscale(inputPath, outputPath) {
 }
 
 // ============================================================
-// 2. ×ª 4K ¸ßÇå
+// 2. ×ª 4K ï¿½ï¿½ï¿½ï¿½
 // ============================================================
 async function upscaleTo4K(inputPath, outputPath) {
   if (alibaba) {
-    try { var r = await alibaba.upscale4K(inputPath, outputPath); if (r) { console.log("°¢ÀïÔÆ ×ª4K³É¹¦"); return r; } } catch(e) { console.error("°¢ÀïÔÆ AI µ÷ÓÃÊ§°Ü:", e && e.message || "unknown"); }
+    try { var r = await alibaba.upscale4K(inputPath, outputPath); if (r) { console.log("ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ×ª4Kï¿½É¹ï¿½"); return r; } } catch(e) { console.error("ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ AI ï¿½ï¿½ï¿½ï¿½Ê§ï¿½ï¿½:", e && e.message || "unknown"); }
   }
   var meta = await sharp(inputPath).metadata();
   var tw = Math.max(3840, meta.width * 4), th = Math.max(2160, meta.height * 4);
@@ -52,21 +52,21 @@ async function upscaleTo4K(inputPath, outputPath) {
 }
 
 // ============================================================
-// 3. ·ç¸ñÇ¨ÒÆ
+// 3. ï¿½ï¿½ï¿½Ç¨ï¿½ï¿½
 // ============================================================
 async function styleTransfer(inputPath, stylePrompt, outputPath) {
   if (alibaba) {
-    try { var r = await alibaba.styleTransfer(inputPath, stylePrompt, outputPath); if (r) { console.log("°¢ÀïÔÆ ·ç¸ñÇ¨ÒÆ³É¹¦"); return r; } } catch(e) { console.error("°¢ÀïÔÆ AI µ÷ÓÃÊ§°Ü:", e && e.message || "unknown"); }
+    try { var r = await alibaba.styleTransfer(inputPath, stylePrompt, outputPath); if (r) { console.log("ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ç¨ï¿½Æ³É¹ï¿½"); return r; } } catch(e) { console.error("ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ AI ï¿½ï¿½ï¿½ï¿½Ê§ï¿½ï¿½:", e && e.message || "unknown"); }
   }
   var pt = stylePrompt || "anime style";
   var px = pt.toLowerCase();
-  if (px.includes("ºÚ°×") || px.includes("bw") || px.includes("»Ò¶È")) { await sharp(inputPath).greyscale().png().toFile(outputPath); return outputPath; }
+  if (px.includes("ï¿½Ú°ï¿½") || px.includes("bw") || px.includes("ï¿½Ò¶ï¿½")) { await sharp(inputPath).greyscale().png().toFile(outputPath); return outputPath; }
   var sat = 1.1, gamma = 1.0, blur = false, tint = { r: 0, g: 0, b: 0 };
-  if (px.includes("¶¯Âþ") || px.includes("anime") || px.includes("¿¨Í¨")) { sat = 1.3; gamma = 1.111; tint.r = 10; tint.g = 5; tint.b = 15; }
-  else if (px.includes("ÓÍ»­") || px.includes("oil")) { sat = 1.2; gamma = 1.176; tint.r = 5; tint.g = 5; }
-  else if (px.includes("Ë®²Ê") || px.includes("water")) { sat = 0.9; gamma = 1.1; blur = true; tint.b = 20; }
-  else if (px.includes("¸´¹Å") || px.includes("vintage") || px.includes("»³¾É")) { sat = 0.8; gamma = 1.111; tint.r = 30; tint.g = 15; }
-  else if (px.includes("Èü²©") || px.includes("cyber") || px.includes("neon")) { sat = 1.5; gamma = 1.053; tint.b = 30; }
+  if (px.includes("ï¿½ï¿½ï¿½ï¿½") || px.includes("anime") || px.includes("ï¿½ï¿½Í¨")) { sat = 1.3; gamma = 1.111; tint.r = 10; tint.g = 5; tint.b = 15; }
+  else if (px.includes("ï¿½Í»ï¿½") || px.includes("oil")) { sat = 1.2; gamma = 1.176; tint.r = 5; tint.g = 5; }
+  else if (px.includes("Ë®ï¿½ï¿½") || px.includes("water")) { sat = 0.9; gamma = 1.1; blur = true; tint.b = 20; }
+  else if (px.includes("ï¿½ï¿½ï¿½ï¿½") || px.includes("vintage") || px.includes("ï¿½ï¿½ï¿½ï¿½")) { sat = 0.8; gamma = 1.111; tint.r = 30; tint.g = 15; }
+  else if (px.includes("ï¿½ï¿½ï¿½ï¿½") || px.includes("cyber") || px.includes("neon")) { sat = 1.5; gamma = 1.053; tint.b = 30; }
   var pipe = sharp(inputPath).modulate({ saturation: sat });
   if (tint.r || tint.g || tint.b) pipe = pipe.tint({ r: 255 + tint.r, g: 255 + tint.g, b: 255 + tint.b });
   if (gamma !== 1.0) pipe = pipe.gamma(gamma);
@@ -76,11 +76,11 @@ async function styleTransfer(inputPath, stylePrompt, outputPath) {
 }
 
 // ============================================================
-// 4. ³öÀàËÆÍ¼
+// 4. ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í¼
 // ============================================================
 async function generateSimilar(inputPath, outputPath) {
   if (alibaba) {
-    try { var r = await alibaba.generateSimilar(inputPath, outputPath); if (r) { console.log("°¢ÀïÔÆ ³öÀàËÆÍ¼³É¹¦"); return r; } } catch(e) { console.error("°¢ÀïÔÆ AI µ÷ÓÃÊ§°Ü:", e && e.message || "unknown"); }
+    try { var r = await alibaba.generateSimilar(inputPath, outputPath); if (r) { console.log("ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í¼ï¿½É¹ï¿½"); return r; } } catch(e) { console.error("ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ AI ï¿½ï¿½ï¿½ï¿½Ê§ï¿½ï¿½:", e && e.message || "unknown"); }
   }
   var hueShift = Math.floor(Math.random() * 60) - 30;
   var satShift = 1.0 + (Math.random() * 0.5 - 0.25);

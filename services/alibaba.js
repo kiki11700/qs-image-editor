@@ -92,20 +92,89 @@ function request(method, host, path, headers, body) {
   });
 }
 
-/** 调用视觉智能平台 API */
-async function callViapi(endpoint, version, action, params) {
-  if (!ACCESS_KEY_ID || !ACCESS_KEY_SECRET) {
-    throw new Error("阿里云未配置: 请设置 ALIBABA_ACCESS_KEY_ID 和 ALIBABA_ACCESS_KEY_SECRET");
-  }
-  var body = JSON.stringify(params);
-  var headers = buildHeaders("POST", "/", body, action, version);
-  headers["x-acs-action"] = action;
-  headers["x-acs-version"] = version;
-  var result = await request("POST", endpoint, "/", headers, body);
-  return result.Data || result;
+/** URL ?????? POP API ??? */
+function percentEncode(str) {
+  return encodeURIComponent(str)
+    .replace(/!/g, "%21")
+    .replace(/'/g, "%27")
+    .replace(/\(/g, "%28")
+    .replace(/\)/g, "%29")
+    .replace(/\*/g, "%2A");
 }
 
-/** 文件转可用的图片数据 */
+/** ?? POP API ?? */
+function popSign(stringToSign, secret) {
+  return crypto.createHmac("sha1", secret + "&").update(stringToSign).digest().toString("base64");
+}
+
+/** ???????SignatureNonce? */
+function genNonce() {
+  return Date.now().toString(36) + Math.random().toString(36).substring(2, 10);
+}
+
+/** ?? POP API?imageseg/imageenhan ??????? */
+async function callPOPApi(endpoint, version, action, params) {
+  if (!ACCESS_KEY_ID || !ACCESS_KEY_SECRET) {
+    throw new Error("??????: ??? ALIBABA_ACCESS_KEY_ID ? ALIBABA_ACCESS_KEY_SECRET");
+  }
+
+  var body = JSON.stringify(params);
+  var timestamp = new Date().toISOString().replace(/..+/, "Z");
+
+  var popParams = [
+    ["AccessKeyId", ACCESS_KEY_ID],
+    ["Action", action],
+    ["Format", "JSON"],
+    ["SignatureMethod", "HMAC-SHA1"],
+    ["SignatureNonce", genNonce()],
+    ["SignatureVersion", "1.0"],
+    ["Timestamp", timestamp],
+    ["Version", version]
+  ];
+
+  // ?? + ??
+  popParams.sort(function(a, b) { return a[0] < b[0] ? -1 : 1; });
+  var canonicalized = popParams.map(function(p) {
+    return percentEncode(p[0]) + "=" + percentEncode(p[1]);
+  }).join("&");
+
+  // ??
+  var stringToSign = "POST&" + percentEncode("/") + "&" + percentEncode(canonicalized);
+  var signature = popSign(stringToSign, ACCESS_KEY_SECRET);
+  var queryStr = canonicalized + "&" + percentEncode("Signature") + "=" + percentEncode(signature);
+
+  return new Promise(function(resolve, reject) {
+    var opts = {
+      hostname: endpoint,
+      path: "/?" + queryStr,
+      method: "POST",
+      timeout: 120000,
+      headers: { "Content-Type": "application/json;charset=utf-8" }
+    };
+    var req = https.request(opts, function(res) {
+      var data = "";
+      res.on("data", function(c) { data += c; });
+      res.on("end", function() {
+        try {
+          var parsed = JSON.parse(data);
+          if (parsed.Code && parsed.Code !== "200") {
+            reject(new Error(parsed.Message || parsed.Code));
+          } else {
+            resolve(parsed.Data || parsed);
+          }
+        } catch(e) {
+          console.error("?????????:", data.substring(0, 500));
+          reject(new Error("Parse failed: " + data.substring(0, 200)));
+        }
+      });
+    });
+    req.on("error", function(e) { console.error("???????:", endpoint, e.message); reject(e); });
+    req.setTimeout(120000, function() { req.destroy(); console.error("???????:", endpoint); reject(new Error("Timeout")); });
+    req.write(body);
+    req.end();
+  });
+}
+
 function imagePayload(inputPath, type) {
   var buf = fs.readFileSync(inputPath);
   var base64 = buf.toString("base64");
@@ -133,13 +202,13 @@ function downloadFile(url, dest) {
 // ============================================================
 async function removeBackground(inputPath, outputPath) {
   // 优先通用分割（适用于人物+物体）
-  var result = await callViapi(SEG_ENDPOINT, "2019-12-30", "SegmentCommonImage", {
+  var result = await callPOPApi(SEG_ENDPOINT, "2019-12-30", "SegmentCommonImage", {
     ImageURL: "", ImageContent: fs.readFileSync(inputPath).toString("base64")
   });
 
   // 如果通用分割结果不理想，尝试人像分割
   if (!result || !result.PictureUrl) {
-    result = await callViapi(SEG_ENDPOINT, "2019-12-30", "SegmentBody", {
+    result = await callPOPApi(SEG_ENDPOINT, "2019-12-30", "SegmentBody", {
       ImageURL: "", ImageContent: fs.readFileSync(inputPath).toString("base64")
     });
   }
@@ -206,7 +275,7 @@ async function replaceBackground(inputPath, bgColor, outputPath) {
 // 3. 转4K高清（图像超分辨率）
 // ============================================================
 async function upscale4K(inputPath, outputPath) {
-  var result = await callViapi(ENHANCE_ENDPOINT, "2019-09-30", "MakeSuperResolutionImage", {
+  var result = await callPOPApi(ENHANCE_ENDPOINT, "2019-09-30", "MakeSuperResolutionImage", {
     ImageURL: "", ImageContent: fs.readFileSync(inputPath).toString("base64"),
     UpscaleFactor: 4,
     OutputFormat: "png"

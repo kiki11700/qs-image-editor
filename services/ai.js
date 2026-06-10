@@ -1,15 +1,15 @@
-ï»¿const sharp = require("sharp");
+const sharp = require("sharp");
 const fs = require("fs");
 const https = require("https");
 
 // ============================================================
-// ç»Ÿä¸€ AI æœåŠ¡ - å®Œå…¨æ›¿æ¢ Replicate
-//   1. é˜¿é‡Œäº‘ï¼ˆä¸»åŠ›ï¼‰
-//   2. Sharp ç®—æ³•ï¼ˆç»ˆæå…œåº•ï¼‰
+// Í³Ò» AI ·şÎñ - ÍêÈ«Ìæ»» Replicate
+//   1. °¢ÀïÔÆ£¨Ö÷Á¦£©
+//   2. Sharp Ëã·¨£¨ÖÕ¼«¶µµ×£©
 // ============================================================
 
 let alibaba = null;
-try { alibaba = require("./alibaba"); } catch(e) {}
+try { alibaba = require("./alibaba"); } catch(e) { console.error("°¢ÀïÔÆ AI µ÷ÓÃÊ§°Ü:", e && e.message || "unknown"); }
 
 function downloadFile(url, dest) {
   return new Promise(function(resolve, reject) {
@@ -27,11 +27,11 @@ function downloadFile(url, dest) {
 }
 
 // ============================================================
-// 1. è½¬é«˜æ¸… (2x)
+// 1. ×ª¸ßÇå (2x)
 // ============================================================
 async function upscale(inputPath, outputPath) {
   if (alibaba) {
-    try { var r = await alibaba.upscale4K(inputPath, outputPath); if (r) { console.log("é˜¿é‡Œäº‘ è¶…åˆ†æˆåŠŸ"); return r; } } catch(e) {}
+    try { var r = await alibaba.upscale4K(inputPath, outputPath); if (r) { console.log("°¢ÀïÔÆ ³¬·Ö³É¹¦"); return r; } } catch(e) { console.error("°¢ÀïÔÆ AI µ÷ÓÃÊ§°Ü:", e && e.message || "unknown"); }
   }
   var meta = await sharp(inputPath).metadata();
   await sharp(inputPath).resize(Math.round(meta.width * 2), Math.round(meta.height * 2), { kernel: sharp.kernel.lanczos3, fit: "fill", withoutReduction: true }).sharpen({ sigma: 1.5, m1: 0.5, m2: 1.0 }).png().toFile(outputPath);
@@ -39,11 +39,11 @@ async function upscale(inputPath, outputPath) {
 }
 
 // ============================================================
-// 2. è½¬ 4K é«˜æ¸…
+// 2. ×ª 4K ¸ßÇå
 // ============================================================
 async function upscaleTo4K(inputPath, outputPath) {
   if (alibaba) {
-    try { var r = await alibaba.upscale4K(inputPath, outputPath); if (r) { console.log("é˜¿é‡Œäº‘ è½¬4KæˆåŠŸ"); return r; } } catch(e) {}
+    try { var r = await alibaba.upscale4K(inputPath, outputPath); if (r) { console.log("°¢ÀïÔÆ ×ª4K³É¹¦"); return r; } } catch(e) { console.error("°¢ÀïÔÆ AI µ÷ÓÃÊ§°Ü:", e && e.message || "unknown"); }
   }
   var meta = await sharp(inputPath).metadata();
   var tw = Math.max(3840, meta.width * 4), th = Math.max(2160, meta.height * 4);
@@ -52,21 +52,21 @@ async function upscaleTo4K(inputPath, outputPath) {
 }
 
 // ============================================================
-// 3. é£æ ¼è¿ç§»
+// 3. ·ç¸ñÇ¨ÒÆ
 // ============================================================
 async function styleTransfer(inputPath, stylePrompt, outputPath) {
   if (alibaba) {
-    try { var r = await alibaba.styleTransfer(inputPath, stylePrompt, outputPath); if (r) { console.log("é˜¿é‡Œäº‘ é£æ ¼è¿ç§»æˆåŠŸ"); return r; } } catch(e) {}
+    try { var r = await alibaba.styleTransfer(inputPath, stylePrompt, outputPath); if (r) { console.log("°¢ÀïÔÆ ·ç¸ñÇ¨ÒÆ³É¹¦"); return r; } } catch(e) { console.error("°¢ÀïÔÆ AI µ÷ÓÃÊ§°Ü:", e && e.message || "unknown"); }
   }
   var pt = stylePrompt || "anime style";
   var px = pt.toLowerCase();
-  if (px.includes("é»‘ç™½") || px.includes("bw") || px.includes("ç°åº¦")) { await sharp(inputPath).greyscale().png().toFile(outputPath); return outputPath; }
+  if (px.includes("ºÚ°×") || px.includes("bw") || px.includes("»Ò¶È")) { await sharp(inputPath).greyscale().png().toFile(outputPath); return outputPath; }
   var sat = 1.1, gamma = 1.0, blur = false, tint = { r: 0, g: 0, b: 0 };
-  if (px.includes("åŠ¨æ¼«") || px.includes("anime") || px.includes("å¡é€š")) { sat = 1.3; gamma = 1.111; tint.r = 10; tint.g = 5; tint.b = 15; }
-  else if (px.includes("æ²¹ç”»") || px.includes("oil")) { sat = 1.2; gamma = 1.176; tint.r = 5; tint.g = 5; }
-  else if (px.includes("æ°´å½©") || px.includes("water")) { sat = 0.9; gamma = 1.1; blur = true; tint.b = 20; }
-  else if (px.includes("å¤å¤") || px.includes("vintage") || px.includes("æ€€æ—§")) { sat = 0.8; gamma = 1.111; tint.r = 30; tint.g = 15; }
-  else if (px.includes("èµ›åš") || px.includes("cyber") || px.includes("neon")) { sat = 1.5; gamma = 1.053; tint.b = 30; }
+  if (px.includes("¶¯Âş") || px.includes("anime") || px.includes("¿¨Í¨")) { sat = 1.3; gamma = 1.111; tint.r = 10; tint.g = 5; tint.b = 15; }
+  else if (px.includes("ÓÍ»­") || px.includes("oil")) { sat = 1.2; gamma = 1.176; tint.r = 5; tint.g = 5; }
+  else if (px.includes("Ë®²Ê") || px.includes("water")) { sat = 0.9; gamma = 1.1; blur = true; tint.b = 20; }
+  else if (px.includes("¸´¹Å") || px.includes("vintage") || px.includes("»³¾É")) { sat = 0.8; gamma = 1.111; tint.r = 30; tint.g = 15; }
+  else if (px.includes("Èü²©") || px.includes("cyber") || px.includes("neon")) { sat = 1.5; gamma = 1.053; tint.b = 30; }
   var pipe = sharp(inputPath).modulate({ saturation: sat });
   if (tint.r || tint.g || tint.b) pipe = pipe.tint({ r: 255 + tint.r, g: 255 + tint.g, b: 255 + tint.b });
   if (gamma !== 1.0) pipe = pipe.gamma(gamma);
@@ -76,11 +76,11 @@ async function styleTransfer(inputPath, stylePrompt, outputPath) {
 }
 
 // ============================================================
-// 4. å‡ºç±»ä¼¼å›¾
+// 4. ³öÀàËÆÍ¼
 // ============================================================
 async function generateSimilar(inputPath, outputPath) {
   if (alibaba) {
-    try { var r = await alibaba.generateSimilar(inputPath, outputPath); if (r) { console.log("é˜¿é‡Œäº‘ å‡ºç±»ä¼¼å›¾æˆåŠŸ"); return r; } } catch(e) {}
+    try { var r = await alibaba.generateSimilar(inputPath, outputPath); if (r) { console.log("°¢ÀïÔÆ ³öÀàËÆÍ¼³É¹¦"); return r; } } catch(e) { console.error("°¢ÀïÔÆ AI µ÷ÓÃÊ§°Ü:", e && e.message || "unknown"); }
   }
   var hueShift = Math.floor(Math.random() * 60) - 30;
   var satShift = 1.0 + (Math.random() * 0.5 - 0.25);
